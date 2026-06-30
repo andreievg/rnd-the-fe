@@ -1,5 +1,7 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const { VanillaExtractPlugin } = require("@vanilla-extract/webpack-plugin");
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === "production";
@@ -33,11 +35,15 @@ module.exports = (env, argv) => {
         },
         {
           test: /\.css$/,
-          use: ["style-loader", "css-loader"],
+          use: [MiniCssExtractPlugin.loader, "css-loader"],
         },
       ],
     },
     plugins: [
+      new VanillaExtractPlugin(),
+      new MiniCssExtractPlugin({
+        filename: isProduction ? "[name].[contenthash].css" : "[name].css",
+      }),
       new HtmlWebpackPlugin({
         template: "./src/index.html",
       }),
