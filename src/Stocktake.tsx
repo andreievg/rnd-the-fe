@@ -2,11 +2,7 @@ import { For, Show, createSignal, onMount } from "solid-js";
 import * as s from "./Stocktake.css";
 import { stocktakeMeta } from "./stocktakeData";
 import { graphqlFetch } from "./graphql";
-import {
-  stocktakeLinesDocument,
-  type stocktakeLinesResult,
-  type stocktakeLinesVariables,
-} from "./stocktakeLines.generated";
+import { StocktakeLines, type StocktakeLinesResult } from "./stocktakeLines.generated";
 
 // Hardcoded for this step — render just the table (no filters / URL parsing yet).
 const STOCKTAKE_ID = "019f17d0-1444-795c-ac53-da2216c73cff";
@@ -14,7 +10,7 @@ const STORE_ID = "5B28901C52396E4BB098B9862CCF5DF9";
 
 // A single line node straight from the generated GraphQL result type.
 type LineNode =
-  stocktakeLinesResult["stocktakeLines"]["nodes"][number];
+  StocktakeLinesResult["stocktakeLines"]["nodes"][number];
 
 const columns = [
   { key: "code", label: "Code", sortable: true },
@@ -68,16 +64,13 @@ function Stocktake() {
 
   onMount(async () => {
     try {
-      const variables: stocktakeLinesVariables = {
+      // Variables are checked against StocktakeLines; result type is inferred.
+      const data = await graphqlFetch(StocktakeLines, {
         stocktakeId: STOCKTAKE_ID,
         storeId: STORE_ID,
         page: {},
         sort: [{ key: "itemName", desc: false }],
-      };
-      const data = await graphqlFetch<stocktakeLinesResult, stocktakeLinesVariables>(
-        stocktakeLinesDocument,
-        variables,
-      );
+      });
       setRows(data.stocktakeLines.nodes);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
