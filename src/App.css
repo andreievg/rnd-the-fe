@@ -1,0 +1,16 @@
+.app {
+  text-align: center;
+  padding: 2rem;
+}
+
+.app button {
+  font-size: 1rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.app button:hover {
+  border-color: #646cff;
+}
