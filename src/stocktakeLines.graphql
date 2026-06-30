@@ -1,0 +1,126 @@
+query stocktakeLines(
+  $stocktakeId: String!
+  $storeId: String!
+  $page: PaginationInput
+  $sort: [StocktakeLineSortInput!]
+  $filter: StocktakeLineFilterInput
+) {
+  stocktakeLines(
+    stocktakeId: $stocktakeId
+    storeId: $storeId
+    page: $page
+    sort: $sort
+    filter: $filter
+  ) {
+    ... on StocktakeLineConnector {
+      __typename
+      totalCount
+      nodes {
+        ...StocktakeLine
+      }
+    }
+  }
+}
+
+fragment StocktakeLine on StocktakeLineNode {
+  __typename
+  stocktakeId
+  batch
+  itemId
+  itemName
+  id
+  expiryDate
+  manufactureDate
+  packSize
+  snapshotNumberOfPacks
+  countedNumberOfPacks
+  sellPricePerPack
+  costPricePerPack
+  comment
+  volumePerPack
+  donorId
+  donorName
+  manufacturer(storeId: $storeId) {
+    ...NameRow
+  }
+  location {
+    __typename
+    id
+    name
+    code
+    onHold
+    locationType {
+      id
+      name
+    }
+  }
+  stockLine {
+    __typename
+    id
+  }
+  item {
+    __typename
+    id
+    code
+    name
+    unitName
+    isVaccine
+    doses
+    defaultPackSize
+    restrictedLocationTypeId
+    itemStoreProperties(storeId: $storeId) {
+      defaultSellPricePerPack
+    }
+  }
+  itemVariantId
+  vvmStatus {
+    ...VVMStatus
+  }
+  itemVariant {
+    __typename
+    id
+    packagingVariants {
+      __typename
+      id
+      packSize
+      volumePerUnit
+    }
+  }
+  reasonOption {
+    reason
+    type
+    isActive
+    id
+  }
+  campaign {
+    id
+    name
+  }
+  program {
+    id
+    name
+  }
+}
+
+fragment NameRow on NameNode {
+  code
+  id
+  isCustomer
+  isSupplier
+  isOnHold
+  name
+  store {
+    id
+    code
+    isDisabled
+  }
+}
+
+fragment VVMStatus on VvmstatusNode {
+  __typename
+  description
+  id
+  priority
+  reasonId
+  unusable
+}

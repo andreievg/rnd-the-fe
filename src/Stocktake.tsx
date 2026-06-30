@@ -1,6 +1,20 @@
-import { For } from "solid-js";
+import { For, Show, createSignal, onMount } from "solid-js";
 import * as s from "./Stocktake.css";
-import { stocktakeLines, stocktakeMeta } from "./stocktakeData";
+import { stocktakeMeta } from "./stocktakeData";
+import { graphqlFetch } from "./graphql";
+import {
+  stocktakeLinesDocument,
+  type stocktakeLinesResult,
+  type stocktakeLinesVariables,
+} from "./stocktakeLines.generated";
+
+// Hardcoded for this step — render just the table (no filters / URL parsing yet).
+const STOCKTAKE_ID = "019f17d0-1444-795c-ac53-da2216c73cff";
+const STORE_ID = "5B28901C52396E4BB098B9862CCF5DF9";
+
+// A single line node straight from the generated GraphQL result type.
+type LineNode =
+  stocktakeLinesResult["stocktakeLines"]["nodes"][number];
 
 const columns = [
   { key: "code", label: "Code", sortable: true },
@@ -18,7 +32,60 @@ const columns = [
   { key: "manufacturer", label: "Manufacturer" },
 ] as const;
 
+type ColumnKey = (typeof columns)[number]["key"];
+
+const dash = (v: string | null | undefined) => (v == null || v === "" ? "" : v);
+const numOrDash = (v: number | null | undefined) =>
+  v == null ? "-" : String(v);
+
+/** Flatten a GraphQL line node into the table's cell values. */
+function toCells(line: LineNode): Record<ColumnKey, string> {
+  const snapshot = line.snapshotNumberOfPacks;
+  const counted = line.countedNumberOfPacks;
+  const difference =
+    counted == null ? "-" : String(counted - snapshot);
+  return {
+    code: line.item.code,
+    name: line.itemName,
+    batch: dash(line.batch),
+    expiryDate: dash(line.expiryDate),
+    manufactureDate: dash(line.manufactureDate),
+    location: dash(line.location?.name),
+    unitName: dash(line.item.unitName),
+    packSize: numOrDash(line.packSize),
+    packsSnapshot: String(snapshot),
+    packsCounted: counted == null ? "" : String(counted),
+    difference,
+    reason: dash(line.reasonOption?.reason),
+    manufacturer: dash(line.manufacturer?.name),
+  };
+}
+
 function Stocktake() {
+  const [rows, setRows] = createSignal<LineNode[]>([]);
+  const [error, setError] = createSignal<string | null>(null);
+  const [loading, setLoading] = createSignal(true);
+
+  onMount(async () => {
+    try {
+      const variables: stocktakeLinesVariables = {
+        stocktakeId: STOCKTAKE_ID,
+        storeId: STORE_ID,
+        page: {},
+        sort: [{ key: "itemName", desc: false }],
+      };
+      const data = await graphqlFetch<stocktakeLinesResult, stocktakeLinesVariables>(
+        stocktakeLinesDocument,
+        variables,
+      );
+      setRows(data.stocktakeLines.nodes);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  });
+
   return (
     <div class={s.page}>
       <div class={s.topBar}>
@@ -75,33 +142,43 @@ function Stocktake() {
             </tr>
           </thead>
           <tbody>
-            <For each={stocktakeLines}>
-              {(line) => (
-                <tr class={s.row}>
-                  <td class={`${s.td} ${s.checkboxCell}`}>
-                    <span class={s.checkbox} />
-                  </td>
-                  <For each={columns}>
-                    {(col) => {
-                      const value = line[col.key];
-                      const isLink = col.key === "code" || col.key === "name";
-                      const numeric = "numeric" in col && col.numeric;
-                      return (
-                        <td class={`${s.td}${numeric ? ` ${s.numericCell}` : ""}`}>
-                          {isLink ? (
-                            <span class={s.linkCell}>{value}</span>
-                          ) : (
-                            value
-                          )}
-                        </td>
-                      );
-                    }}
-                  </For>
-                </tr>
-              )}
+            <For each={rows()}>
+              {(line) => {
+                const cells = toCells(line);
+                return (
+                  <tr class={s.row}>
+                    <td class={`${s.td} ${s.checkboxCell}`}>
+                      <span class={s.checkbox} />
+                    </td>
+                    <For each={columns}>
+                      {(col) => {
+                        const value = cells[col.key];
+                        const isLink = col.key === "code" || col.key === "name";
+                        const numeric = "numeric" in col && col.numeric;
+                        return (
+                          <td class={`${s.td}${numeric ? ` ${s.numericCell}` : ""}`}>
+                            {isLink ? (
+                              <span class={s.linkCell}>{value}</span>
+                            ) : (
+                              value
+                            )}
+                          </td>
+                        );
+                      }}
+                    </For>
+                  </tr>
+                );
+              }}
             </For>
           </tbody>
         </table>
+
+        <Show when={loading()}>
+          <div class={s.statusRow}>Loading…</div>
+        </Show>
+        <Show when={error()}>
+          <div class={s.statusRow}>Failed to load: {error()}</div>
+        </Show>
       </div>
     </div>
   );

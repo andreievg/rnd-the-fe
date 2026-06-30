@@ -219,6 +219,12 @@ export const numericCell = style({
   textAlign: "right",
 });
 
+export const statusRow = style({
+  padding: "16px",
+  color: vars.color.textMuted,
+  fontSize: vars.font.sizeBody,
+});
+
 /* Reset default margins on host page */
 globalStyle("body", {
   margin: 0,
