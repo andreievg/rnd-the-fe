@@ -1,0 +1,119 @@
+.inventory {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #1f2933;
+}
+
+.inventory__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #d2d6dc;
+  background: #fff;
+  flex: none;
+}
+
+.inventory__toolbar h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.inventory__search {
+  flex: 1;
+  max-width: 360px;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.inventory__count {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: #616e7c;
+  white-space: nowrap;
+}
+
+.inventory__scroll {
+  flex: 1;
+  overflow: auto;
+  background: #f5f7fa;
+}
+
+.inventory__table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.inventory__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #1f2933;
+  color: #fff;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.inventory__table thead th:hover {
+  background: #323f4b;
+}
+
+.inventory__table td {
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid #e4e7eb;
+  white-space: nowrap;
+}
+
+.inventory__table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.inventory__table tbody tr:hover {
+  background: #eef2f7;
+}
+
+.cell--right {
+  text-align: right;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status--in {
+  background: #def7ec;
+  color: #03543f;
+}
+
+.status--low {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status--out {
+  background: #fde8e8;
+  color: #9b1c1c;
+}
+
+.status--expired {
+  background: #e5e7eb;
+  color: #4b5563;
+  text-decoration: line-through;
+}
