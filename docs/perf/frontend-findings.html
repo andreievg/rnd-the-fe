@@ -306,10 +306,11 @@
 <p>
   I tested that assumption directly. With an editable list, rendering all rows is <b>slow</b> — and
   crucially, it's <b>not</b> a Solid or reactivity problem: I stripped it down to a
-  <b>completely static HTML page with zero reactivity</b> and it was <b>still slow</b>. That baseline is
-  at <code>static-baseline/index.html</code> on the
+  <b>completely static HTML page with zero reactivity</b> and it was <b>still slow</b>.
+  <b><a href="./static-baseline/index.html">Open the static baseline →</a></b>
+  (source lives on the
   <a href="https://github.com/andreievg/rnd-the-fe/tree/own-table-no-virtualisation-editable">own-table-no-virtualisation-editable</a>
-  branch. The conclusion: the cost is the sheer DOM size (27k nodes for 1506 rows), so virtualization
+  branch). The conclusion: the cost is the sheer DOM size (27k nodes for 1506 rows), so virtualization
   is non-negotiable for large tables regardless of framework.
 </p>
 
@@ -340,7 +341,10 @@
 
 <footer>
   Measurements produced by the <code>perf-measure</code> skill · 6× CPU throttle · median of 5 runs (warm-up dropped) ·
-  Apple M3 Pro / Chrome 149. Full data: <a href="./frontend-runs.html">frontend-runs.html</a>.
+  Apple M3 Pro / Chrome 149.<br>
+  <a href="./index.html">← All docs</a> ·
+  <a href="./frontend-runs.html">Raw metrics</a> ·
+  <a href="./static-baseline/index.html">Static baseline</a> ·
   Repo: <a href="https://github.com/andreievg/rnd-the-fe">andreievg/rnd-the-fe</a>.
 </footer>
 
