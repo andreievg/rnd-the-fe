@@ -309,14 +309,24 @@
 
 <h3>"Maybe we don't need virtualization"?</h3>
 <p>
-  I tested that assumption directly. With an editable list, rendering all rows is <b>slow</b> — and
-  crucially, it's <b>not</b> a Solid or reactivity problem: I stripped it down to a
-  <b>completely static HTML page with zero reactivity</b> and it was <b>still slow</b>.
+  I tested that assumption directly, and the result was more nuanced than expected —
+  <b>not all DOM elements cost the same.</b>
+</p>
+<ul>
+  <li><b>Rendering the full list is fast</b> — even the whole 1506-row table paints quickly.</li>
+  <li><b>An editable list still renders fast</b> — just <em>having</em> editable fields on the page isn't the problem.</li>
+  <li><b>The slowness only appears when you actually edit a field</b> — interacting with / updating an
+    individual editable input in a full un-virtualized list is where it drags.</li>
+</ul>
+<p>
+  So the cost isn't raw DOM size at render time; it's the <b>per-edit update cost</b> when thousands of
+  interactive fields are live in the document at once. And it's <b>not</b> a Solid or reactivity issue —
+  I stripped it to a <b>completely static HTML page with zero reactivity</b> and editing was <b>still slow</b>.
   <b><a href="./static-baseline/index.html">Open the static baseline →</a></b>
-  (source lives on the
+  (source on the
   <a href="https://github.com/andreievg/rnd-the-fe/tree/own-table-no-virtualisation-editable">own-table-no-virtualisation-editable</a>
-  branch). The conclusion: the cost is the sheer DOM size (27k nodes for 1506 rows), so virtualization
-  is non-negotiable for large tables regardless of framework.
+  branch). The conclusion still lands the same place: for large <em>editable</em> tables, virtualization
+  is non-negotiable — keeping only the visible rows live is what keeps editing responsive.
 </p>
 
 <h3>So: adopt TanStack Table</h3>
