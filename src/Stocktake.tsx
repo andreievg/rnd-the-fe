@@ -1,61 +1,83 @@
-import { For, Show, createSignal, onMount } from "solid-js";
-import * as s from "./Stocktake.css";
-import { stocktakeMeta } from "./stocktakeData";
-import { graphqlFetch } from "./graphql";
-import { StocktakeLines, type StocktakeLinesResult } from "./stocktakeLines.generated";
+import { Show, createSignal, onMount } from 'solid-js';
+import * as s from './Stocktake.css';
+import { stocktakeMeta } from './stocktakeData';
+import { graphqlFetch } from './graphql';
+import { StocktakeLines, type StocktakeLinesResult } from './stocktakeLines.generated';
+import {
+  Table,
+  defineColumns,
+  textHeader,
+  TextCell,
+  NumberCell,
+  LinkCell,
+  CheckboxCell,
+} from './table';
+import type { CellProps } from './table';
 
 // Hardcoded for this step — render just the table (no filters / URL parsing yet).
-const STOCKTAKE_ID = "019f17d0-1444-795c-ac53-da2216c73cff";
-const STORE_ID = "5B28901C52396E4BB098B9862CCF5DF9";
+const STOCKTAKE_ID = '019f17d0-1444-795c-ac53-da2216c73cff';
+const STORE_ID = '5B28901C52396E4BB098B9862CCF5DF9';
 
 // A single line node straight from the generated GraphQL result type.
-type LineNode =
-  StocktakeLinesResult["stocktakeLines"]["nodes"][number];
+type LineNode = StocktakeLinesResult['stocktakeLines']['nodes'][number];
 
-const columns = [
-  { key: "code", label: "Code", sortable: true },
-  { key: "name", label: "Name", sortable: true, sorted: "asc" as const },
-  { key: "batch", label: "Batch", sortable: true },
-  { key: "expiryDate", label: "Expiry date", sortable: true },
-  { key: "manufactureDate", label: "Manufacture date", sortable: true },
-  { key: "location", label: "Location" },
-  { key: "unitName", label: "Unit name", sortable: true },
-  { key: "packSize", label: "Pack size" },
-  { key: "packsSnapshot", label: "Packs snapshot", sortable: true, numeric: true },
-  { key: "packsCounted", label: "Packs counted", sortable: true, numeric: true },
-  { key: "difference", label: "Difference", numeric: true },
-  { key: "reason", label: "Reason", sortable: true },
-  { key: "manufacturer", label: "Manufacturer" },
-] as const;
-
-type ColumnKey = (typeof columns)[number]["key"];
-
-const dash = (v: string | null | undefined) => (v == null || v === "" ? "" : v);
-const numOrDash = (v: number | null | undefined) =>
-  v == null ? "-" : String(v);
-
-/** Flatten a GraphQL line node into the table's cell values. */
-function toCells(line: LineNode): Record<ColumnKey, string> {
-  const snapshot = line.snapshotNumberOfPacks;
-  const counted = line.countedNumberOfPacks;
-  const difference =
-    counted == null ? "-" : String(counted - snapshot);
-  return {
-    code: line.item.code,
-    name: line.itemName,
-    batch: dash(line.batch),
-    expiryDate: dash(line.expiryDate),
-    manufactureDate: dash(line.manufactureDate),
-    location: dash(line.location?.name),
-    unitName: dash(line.item.unitName),
-    packSize: numOrDash(line.packSize),
-    packsSnapshot: String(snapshot),
-    packsCounted: counted == null ? "" : String(counted),
-    difference,
-    reason: dash(line.reasonOption?.reason),
-    manufacturer: dash(line.manufacturer?.name),
-  };
+/**
+ * Composite cell bound to LineNode: no accessor, computes from the whole row.
+ * A per-table cell reads `row` as its concrete type (unlike the reusable
+ * prebuilt cells, which key off `value` only).
+ */
+function DifferenceCell(props: CellProps<undefined, LineNode>) {
+  const value = () =>
+    props.row.countedNumberOfPacks == null
+      ? null
+      : props.row.countedNumberOfPacks - props.row.snapshotNumberOfPacks;
+  return <NumberCell value={value()} row={props.row} />;
 }
+
+// Columns: `cell` is a component you import & use; `value` is typed per accessor.
+const columns = defineColumns<LineNode>()([
+  { header: textHeader(''), cell: CheckboxCell },
+  { accessor: (row) => row.item.code, header: textHeader('Code'), cell: LinkCell },
+  { accessor: (row) => row.itemName, header: textHeader('Name'), cell: LinkCell },
+  { accessor: (row) => row.batch, header: textHeader('Batch'), cell: TextCell },
+  { accessor: (row) => row.expiryDate, header: textHeader('Expiry date'), cell: TextCell },
+  {
+    accessor: (row) => row.manufactureDate,
+    header: textHeader('Manufacture date'),
+    cell: TextCell,
+  },
+  { accessor: (row) => row.location?.name ?? null, header: textHeader('Location'), cell: TextCell },
+  { accessor: (row) => row.item.unitName, header: textHeader('Unit name'), cell: TextCell },
+  {
+    accessor: (row) => row.packSize,
+    header: textHeader('Pack size'),
+    cell: NumberCell,
+    align: 'right',
+  },
+  {
+    accessor: (row) => row.snapshotNumberOfPacks,
+    header: textHeader('Packs snapshot'),
+    cell: NumberCell,
+    align: 'right',
+  },
+  {
+    accessor: (row) => row.countedNumberOfPacks,
+    header: textHeader('Packs counted'),
+    cell: NumberCell,
+    align: 'right',
+  },
+  { header: textHeader('Difference'), cell: DifferenceCell, align: 'right' },
+  {
+    accessor: (row) => row.reasonOption?.reason ?? null,
+    header: textHeader('Reason'),
+    cell: TextCell,
+  },
+  {
+    accessor: (row) => row.manufacturer?.name ?? null,
+    header: textHeader('Manufacturer'),
+    cell: TextCell,
+  },
+]);
 
 function Stocktake() {
   const [rows, setRows] = createSignal<LineNode[]>([]);
@@ -69,7 +91,7 @@ function Stocktake() {
         stocktakeId: STOCKTAKE_ID,
         storeId: STORE_ID,
         page: {},
-        sort: [{ key: "itemName", desc: false }],
+        sort: [{ key: 'itemName', desc: false }],
       });
       setRows(data.stocktakeLines.nodes);
     } catch (err) {
@@ -78,6 +100,12 @@ function Stocktake() {
       setLoading(false);
     }
   });
+
+  const status = () => {
+    if (loading()) return 'Loading…';
+    if (error()) return `Failed to load: ${error()}`;
+    return undefined;
+  };
 
   return (
     <div class={s.page}>
@@ -113,66 +141,7 @@ function Stocktake() {
         <span class={s.tab}>Log</span>
       </div>
 
-      <div class={s.tableWrap}>
-        <table class={s.table}>
-          <thead>
-            <tr>
-              <th class={`${s.th} ${s.checkboxCell}`}>
-                <span class={s.checkbox} />
-              </th>
-              <For each={columns}>
-                {(col) => (
-                  <th
-                    class={`${s.th}${"sortable" in col && col.sortable ? ` ${s.thSortable}` : ""}`}
-                  >
-                    {col.label}
-                    {"sorted" in col && col.sorted ? (
-                      <span class={s.sortArrow}>↑</span>
-                    ) : null}
-                  </th>
-                )}
-              </For>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={rows()}>
-              {(line) => {
-                const cells = toCells(line);
-                return (
-                  <tr class={s.row}>
-                    <td class={`${s.td} ${s.checkboxCell}`}>
-                      <span class={s.checkbox} />
-                    </td>
-                    <For each={columns}>
-                      {(col) => {
-                        const value = cells[col.key];
-                        const isLink = col.key === "code" || col.key === "name";
-                        const numeric = "numeric" in col && col.numeric;
-                        return (
-                          <td class={`${s.td}${numeric ? ` ${s.numericCell}` : ""}`}>
-                            {isLink ? (
-                              <span class={s.linkCell}>{value}</span>
-                            ) : (
-                              value
-                            )}
-                          </td>
-                        );
-                      }}
-                    </For>
-                  </tr>
-                );
-              }}
-            </For>
-          </tbody>
-        </table>
-
-        <Show when={loading()}>
-          <div class={s.statusRow}>Loading…</div>
-        </Show>
-        <Show when={error()}>
-          <div class={s.statusRow}>Failed to load: {error()}</div>
-        </Show>
-      </div>
+      <Table data={rows()} columns={columns} getRowId={(r) => r.id} status={status()} />
     </div>
   );
 }
