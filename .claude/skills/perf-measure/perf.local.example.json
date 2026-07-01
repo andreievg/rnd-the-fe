@@ -1,0 +1,17 @@
+{
+  "$comment": "CREDENTIALS / LOCAL-ONLY CONFIG TEMPLATE. This .example file is committed; the REAL file must be a gitignored copy. Copy it to perf.local.json (matched by the *.local gitignore rule already in this repo — the skill verifies with `git check-ignore` before using it). NEVER put secrets in scenarios.json or the results doc.",
+  "$comment_usage": "This project currently needs NO login, so this file is unused. It exists so adding auth later is a config change, not a code change. If your real page needs login, fill in the fields below and reference this file from the skill's login step.",
+  "login": {
+    "required": false,
+    "$comment_login": "Set required: true and fill these in if your page is behind auth.",
+    "loginUrl": "http://localhost:3000/login",
+    "usernameSelector": "input[name=username]",
+    "passwordSelector": "input[name=password]",
+    "submitSelector": "button[type=submit]",
+    "username": "REPLACE_ME",
+    "password": "REPLACE_ME",
+    "$comment_alt": "Or, for token-based auth, set authHeaderName/authHeaderValue and the skill will inject it instead of driving a form.",
+    "authHeaderName": "",
+    "authHeaderValue": ""
+  }
+}

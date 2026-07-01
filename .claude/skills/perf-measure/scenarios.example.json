@@ -1,0 +1,31 @@
+{
+  "$comment": "Committed template. Copy to scenarios.json (also committed) and edit for your real pages. Each scenario is one measurable page. The skill reads scenarios.json.",
+  "app": {
+    "$comment_app": "How the skill launches/reaches the app. runCommand is started if the app isn't already serving; baseUrl is where it ends up. Leave runCommand empty to measure an already-running server or a deployed baseUrl.",
+    "$comment_serve": "MEASURE THE REAL PRODUCTION BUNDLE. Build, then static-serve with a gzip-capable server. Avoid webpack-dev-server (`webpack serve`) for weight: it injects ~56KB of HMR client into the bundle even in production mode, tripling the over-wire size. `npx serve` gzips like a real CDN; zero-dep fallback is `cd dist && python3 -m http.server <port>` (no gzip).",
+    "runCommand": "npm run build && npx --yes serve -l 3000 dist",
+    "baseUrl": "http://localhost:3000",
+    "readyProbePath": "/",
+    "startupTimeoutMs": 120000
+  },
+  "defaults": {
+    "$comment_defaults": "Applied to every scenario unless overridden. cpuThrottle 6x and 5 runs (drop first) are the team baseline — keep them so rows are comparable.",
+    "cpuThrottle": 6,
+    "networkPreset": "none",
+    "runs": 5,
+    "networkQuietMs": 500
+  },
+  "scenarios": [
+    {
+      "name": "home",
+      "$comment_name": "Friendly name shown in the results doc.",
+      "path": "/",
+      "$comment_readySignal": "THE most important field. The moment the real content the user came for is on screen — NOT the load event. Use a selector that only exists once data is rendered. Convention: add `data-perf-ready` to your content root once your data has rendered, then this selector matches. Replace with e.g. 'table tbody tr' for a data table.",
+      "readySignal": { "selector": "[data-perf-ready]" },
+      "$comment_dataItemCountSelector": "Counts rendered items so a 50-row vs 2000-row page aren't compared as equals. e.g. 'table tbody tr'.",
+      "dataItemCountSelector": "[data-perf-item]",
+      "$comment_dataRequestUrlPattern": "JS RegExp (as a string) matching your data requests, used to time the data layer. GraphQL default matches a /graphql endpoint; widen to '/(graphql|api)/' if you also use REST.",
+      "dataRequestUrlPattern": "/graphql"
+    }
+  ]
+}

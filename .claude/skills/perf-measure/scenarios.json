@@ -1,0 +1,25 @@
+{
+  "$comment": "Active scenarios for THIS project (branch: own-baked-table2). The Stocktake page (src/Stocktake.tsx) fetches all rows via ONE GraphQL POST to localhost:8000/graphql, then renders with a HAND-ROLLED virtualized table (src/table/Table.tsx — no table library, only solid-js). It uses real <table><tbody><tr>: data rows are <tr class=hashed> with a height style; VIRTUALIZATION uses top/bottom SPACER rows marked <tr aria-hidden=\"true\">. So readySignal/dataItemCount must EXCLUDE the spacer rows AND the <thead> row: 'tbody tr:not([aria-hidden])' matches only mounted DATA rows (≈ viewport+overscan, NOT the full 1506 — note when comparing to earlier branches). Backend must be running on :8000 (CORS-enabled for :3000).",
+  "app": {
+    "$comment_runCommand": "Build the REAL production bundle, then static-serve dist/ with a GZIP-capable static server. Do NOT use `npm run preview` for weight numbers: this project's `serve` script is `webpack serve` (dev-server), which bakes ~56KB of HMR/websocket client into the bundle even in production mode — inflating over-wire size from ~7KB to ~24KB. `npx serve` gzips like a real server (bundle measures ~7KB over the wire, ~18KB decoded). Fallback with no network: `cd dist && python3 -m http.server 3000` (zero-dep but does NOT gzip, so over-wire will read ~18KB — still comparable if the whole team uses the same server).",
+    "runCommand": "npm run build && npx --yes serve -l 3000 dist",
+    "baseUrl": "http://localhost:3000",
+    "readyProbePath": "/",
+    "startupTimeoutMs": 120000
+  },
+  "defaults": {
+    "cpuThrottle": 6,
+    "networkPreset": "none",
+    "runs": 5,
+    "networkQuietMs": 500
+  },
+  "scenarios": [
+    {
+      "name": "stocktake",
+      "path": "/",
+      "readySignal": { "selector": "tbody tr:not([aria-hidden])" },
+      "dataItemCountSelector": "tbody tr:not([aria-hidden])",
+      "dataRequestUrlPattern": "/graphql"
+    }
+  ]
+}

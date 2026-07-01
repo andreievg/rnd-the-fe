@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Frontend perf bake-off — results</title>
+<!-- format-version: 4 -->
+<!-- PERF_COLUMNS: utc,scenario,gitBranch,gitCommit,machine,cpuThrottle,networkPreset,cacheState,dataItemCount,runs,timeToNetworkQuietMs,timeToDataRenderedMs,dataRequestCount,slowestDataRequestMs,ttfbMs,fcpMs,loadEventMs,cls,lcpMs,jsHeapUsedMB,heapSnapshotMB,domNodeCount,requestCount,totalDecodedKB,totalTransferKB,collectorVersion,notes -->
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 0; padding: 1.5rem; color: #1a1a1a; }
+  h1 { margin: 0 0 .25rem; }
+  .lede { color: #444; max-width: 70ch; }
+  .lede code { background:#f0f0f0; padding:0 .25em; border-radius:3px; }
+  .warn { background:#fff8e1; border:1px solid #ffe082; padding:.75rem 1rem; border-radius:6px; max-width:80ch; margin:1rem 0; }
+  .warn b { color:#a06a00; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; font-variant-numeric: tabular-nums; }
+  th, td { border: 1px solid #ddd; padding: .3rem .5rem; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  thead th { position: sticky; top: 0; background: #fafafa; z-index: 1; border-bottom: 2px solid #bbb; }
+  tbody tr:nth-child(even) { background: #fbfbfb; }
+  .headline { background: #e8f5e9 !important; font-weight: 600; }
+  thead th.headline { background:#c8e6c9 !important; }
+  .spread { color:#888; font-weight: 400; font-size: .85em; }
+  .empty { color:#bbb; }
+  .note { text-align:left; white-space:normal; max-width:30ch; }
+  footer { margin-top:1.5rem; color:#666; font-size:.85em; }
+</style>
+</head>
+<body>
+<h1>Frontend perf bake-off — results</h1>
+<p class="lede">
+  Comparable frontend performance numbers for the team bake-off. Every row is produced by the
+  same versioned collector (<code>collect.js</code>) under identical CPU/network throttle.
+  The <b>highlighted green columns are the headline, content-based metrics</b> —
+  <code>TTNetworkQuiet</code> (primary ranking metric) and <code>TTDataRendered</code>.
+  All timings are the <b>median of N runs</b> with the warm-up run dropped; the
+  <span class="spread">(min–max)</span> in parentheses is the spread.
+</p>
+<div class="warn">
+  <b>Read me before comparing:</b>
+  <ul>
+    <li><b>Do not rank on the <code>load</code> event or LCP.</b> For a client-rendered SPA the
+      <code>load</code> event fires long before the data the user came for has arrived
+      (we measured <code>load</code> at ~441ms vs data settling at ~4.2s on a real app).
+      Rank on <b>TTNetworkQuiet</b> / <b>TTDataRendered</b>.</li>
+    <li>† <b>LCP is often blank for SPAs — that is expected, not an error.</b> The largest content
+      (e.g. a table) is client-rendered after first interaction, so no LCP candidate is recorded.</li>
+    <li>A row is only comparable to another with a <b>similar data-item count</b> and the
+      <b>same throttle</b>. A 50-row page and a 2000-row page are not comparable.</li>
+  </ul>
+</div>
+<table>
+  <thead>
+    <tr>
+        <th title="context">UTC</th>
+        <th title="context">Scenario</th>
+        <th title="context">Branch</th>
+        <th title="context">Commit</th>
+        <th title="context">Machine (cores · OS · Chrome)</th>
+        <th title="context">CPU×</th>
+        <th title="context">Network</th>
+        <th title="context">Cold/Warm</th>
+        <th title="context">Data items</th>
+        <th title="context">Runs (N)</th>
+        <th class="headline" title="headline">⏱ TTNetworkQuiet (ms)</th>
+        <th class="headline" title="headline">⏱ TTDataRendered (ms)</th>
+        <th title="network">Data reqs</th>
+        <th title="network">Slowest data req (ms)</th>
+        <th title="reference">TTFB (ms)</th>
+        <th title="reference">FCP (ms)</th>
+        <th title="reference">load (ms)</th>
+        <th title="reference">CLS</th>
+        <th title="reference">LCP (ms) †</th>
+        <th title="memory">JS heap (MB)</th>
+        <th title="memory">Heapsnap live (MB)</th>
+        <th title="weight">DOM nodes</th>
+        <th title="weight">Requests</th>
+        <th title="weight">Decoded (KB)</th>
+        <th title="weight">Over-wire (KB)</th>
+        <th title="context">Collector v</th>
+        <th title="context">Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+        <tr>
+      <td>2026-06-30T23:08:22Z</td>
+      <td>home</td>
+      <td>performance-test-gen</td>
+      <td>2383799</td>
+      <td>11c Apple M3 Pro · darwin 23.6.0 · Chrome/149</td>
+      <td>6x</td>
+      <td>none</td>
+      <td>warm</td>
+      <td>0</td>
+      <td>5</td>
+      <td class="headline"><span class="empty">—</span></td>
+      <td class="headline">81 <span class="spread">(80–87)</span></td>
+      <td>0</td>
+      <td><span class="empty">—</span></td>
+      <td>34 <span class="spread">(32–37)</span></td>
+      <td>116 <span class="spread">(108–128)</span></td>
+      <td>84 <span class="spread">(83–91)</span></td>
+      <td>0</td>
+      <td>116 <span class="spread">(108–128)</span></td>
+      <td>2.13</td>
+      <td>1.23</td>
+      <td>15</td>
+      <td>2</td>
+      <td>74.6</td>
+      <td><span class="empty">—</span></td>
+      <td>4</td>
+      <td>Starter app: no /graphql data layer yet, so TTNetworkQuiet &amp; data reqs are null/0 (expected). readyMark=text. ignoreCache only on run1; warm-up dropped. LCP non-null here because the largest element is the static heading — will be null once a real data table is added.</td>
+    </tr>
+        <tr>
+      <td>2026-06-30T23:18:24Z</td>
+      <td>home</td>
+      <td>performance-test-gen</td>
+      <td>2383799</td>
+      <td>11c Apple M3 Pro · darwin 23.6.0 · Chrome/149</td>
+      <td>6x</td>
+      <td>none</td>
+      <td>cold</td>
+      <td>0</td>
+      <td>1</td>
+      <td class="headline"><span class="empty">—</span></td>
+      <td class="headline">73</td>
+      <td>0</td>
+      <td><span class="empty">—</span></td>
+      <td>3</td>
+      <td>110</td>
+      <td>80</td>
+      <td>0</td>
+      <td>110 <span class="spread">(104–120)</span></td>
+      <td>2.13</td>
+      <td>1.23</td>
+      <td>15</td>
+      <td>2</td>
+      <td>18.6</td>
+      <td>8.1</td>
+      <td>5</td>
+      <td>PRODUCTION BUILD via static-serve dist/ (npx serve, gzip) — supersedes the v4 row that measured the dev-server bundle (74.6KB decoded). Real bundle: 18.3KB decoded, 7.5KB gzipped over the wire = SolidJS ~7KB as expected. runs=1 verification sample (weight is deterministic for a static bundle; do a full N=5 for headline timings). No /graphql layer yet so TTNetworkQuiet/data reqs null/0.</td>
+    </tr>
+        <tr>
+      <td>2026-06-30T23:31:20Z</td>
+      <td>stocktake</td>
+      <td>just-table</td>
+      <td>e27e45c</td>
+      <td>11c Apple M3 Pro · darwin 23.6.0 · Chrome/149</td>
+      <td>6x</td>
+      <td>none</td>
+      <td>cold+warm</td>
+      <td>18</td>
+      <td>5</td>
+      <td class="headline"><span class="empty">—</span></td>
+      <td class="headline">85 <span class="spread">(74–213)</span></td>
+      <td>0</td>
+      <td><span class="empty">—</span></td>
+      <td>2 <span class="spread">(2–37)</span></td>
+      <td>140 <span class="spread">(124–272)</span></td>
+      <td>106 <span class="spread">(96–255)</span></td>
+      <td>0</td>
+      <td>140 <span class="spread">(124–272)</span></td>
+      <td>1.73</td>
+      <td>1.4</td>
+      <td>375</td>
+      <td>5</td>
+      <td>32.6</td>
+      <td>10.6</td>
+      <td>5</td>
+      <td>Stocktake table page (just-table branch), 18 rows from a bundled static array — NO data fetch, so TTNetworkQuiet &amp; data reqs null/0 (headline is TTDataRendered). Served via static dist/ + gzip (npx serve). Weight = run1 COLD load (decoded 32.6KB / over-wire 10.6KB incl. .map files; the JS+CSS users actually need is ~7.5KB gzip: main.js 6.4KB + main.css 1.1KB — vanilla-extract emits a separate CSS file). Warm runs 2-5 show over-wire ~0.9KB (cache hits). Max in spread = the single cold run; warm TTDataRendered clusters 74-111ms.</td>
+    </tr>
+        <tr>
+      <td>2026-06-30T23:53:37Z</td>
+      <td>stocktake</td>
+      <td>base-graphql-perf1</td>
+      <td>993e41f</td>
+      <td>11c Apple M3 Pro · darwin 23.6.0 · Chrome/149</td>
+      <td>6x</td>
+      <td>none</td>
+      <td>cold+warm</td>
+      <td>1506</td>
+      <td>5</td>
+      <td class="headline">504 <span class="spread">(477–716)</span></td>
+      <td class="headline">1400 <span class="spread">(1345–1610)</span></td>
+      <td>1</td>
+      <td>388 <span class="spread">(354–411)</span></td>
+      <td>3 <span class="spread">(2–10)</span></td>
+      <td>152 <span class="spread">(140–372)</span></td>
+      <td>149 <span class="spread">(135–471)</span></td>
+      <td>0</td>
+      <td>4456 <span class="spread">(2328–4512)</span></td>
+      <td>1.37</td>
+      <td>29.77</td>
+      <td>27159</td>
+      <td>6</td>
+      <td>40.7</td>
+      <td>13.2</td>
+      <td>5</td>
+      <td>REAL DATA LAYER: 1 GraphQL POST to localhost:8000/graphql (separate backend), 1506 rows rendered. Headline = TTNetworkQuiet 504ms (data settled) &amp; TTDataRendered 1400ms (rows on screen). Note the lies this catches: load=149ms fires ~9x before data is rendered; LCP=4456ms (table is largest content, rendered late) is now non-null and far past load. Weight=cold run1 (decoded 40.7/over-wire 13.2KB incl frontend bundle+css+maps; the GraphQL response body isn't counted in transfer as it's a separate-origin POST). jsHeapUsed median 1.37MB is GC-timing noise (some runs caught 11.5MB pre-GC); heapsnapshot live=29.77MB is the truer memory for 1506 rows. Served: static dist/ on :3000 + gzip; backend on :8000 (CORS-enabled).</td>
+    </tr>
+        <tr>
+      <td>2026-07-01T00:47:59Z</td>
+      <td>stocktake</td>
+      <td>tan-stack-table1</td>
+      <td>45f5e13</td>
+      <td>11c Apple M3 Pro · darwin 23.6.0 · Chrome/149</td>
+      <td>6x</td>
+      <td>none</td>
+      <td>cold+warm</td>
+      <td>26</td>
+      <td>5</td>
+      <td class="headline">502 <span class="spread">(485–737)</span></td>
+      <td class="headline">912 <span class="spread">(860–1157)</span></td>
+      <td>1</td>
+      <td>400 <span class="spread">(382–421)</span></td>
+      <td>4 <span class="spread">(3–5)</span></td>
+      <td>144 <span class="spread">(116–396)</span></td>
+      <td>130 <span class="spread">(112–447)</span></td>
+      <td>0</td>
+      <td>144 <span class="spread">(116–396)</span></td>
+      <td>20.65</td>
+      <td>8.22</td>
+      <td>519</td>
+      <td>6</td>
+      <td>119.4</td>
+      <td>34.7</td>
+      <td>5</td>
+      <td>VIRTUALIZED (@tanstack/solid-table + solid-virtual). Fetches all 1506 rows via 1 GraphQL POST (:8000) but only MOUNTS ~26 visible rows (+overscan 12). dataItemCount=26 is MOUNTED rows, NOT dataset size (still 1506) — compare vs base-graphql row (1506 rows) accordingly. Big wins vs non-virtualized: TTDataRendered 912 vs 1400ms (render no longer scales with row count), DOM 519 vs 27159 nodes (52x), heapsnapshot 8.2 vs 29.8MB. Trade-off: bundle over-wire 34.7 vs 13.2KB (tanstack ~+22KB gzip). Network+parse floor unchanged (~500ms TTNetworkQuiet) since full payload still fetched. LCP now ~=FCP (largest painted content is just the viewport, not full table). readySignal=[role=row][data-even] (virtual rows are divs, not &lt;tr&gt;).</td>
+    </tr>
+        <tr>
+      <td>2026-07-01T01:03:41Z</td>
+      <td>stocktake</td>
+      <td>tan-stack-table1 (v9 SPIKE)</td>
+      <td>45f5e13+wip</td>
+      <td>11c Apple M3 Pro · darwin 23.6.0 · Chrome/149</td>
+      <td>6x</td>
+      <td>none</td>
+      <td>cold+warm</td>
+      <td>26</td>
+      <td>5</td>
+      <td class="headline">487 <span class="spread">(463–656)</span></td>
+      <td class="headline">868 <span class="spread">(815–1060)</span></td>
+      <td>1</td>
+      <td>388 <span class="spread">(379–400)</span></td>
+      <td>4 <span class="spread">(3–4)</span></td>
+      <td>140 <span class="spread">(116–332)</span></td>
+      <td>126 <span class="spread">(111–349)</span></td>
+      <td>0</td>
+      <td>140 <span class="spread">(116–332)</span></td>
+      <td>9.11</td>
+      <td>5.74</td>
+      <td>519</td>
+      <td>6</td>
+      <td>96.5</td>
+      <td>29.8</td>
+      <td>5</td>
+      <td>⚠️ EXPERIMENTAL / NOT COMMITTED — @tanstack/solid-table 9.0.0-BETA.23 spike (migrated in-place then reverted; NOT on the committed branch). vs v8.21.3 row above: BUNDLE main.js 80KB raw / 29.8KB over-wire vs v8 103KB / 34.7KB (~-23KB raw, -15% gzip — v9 tree-shakes: registered tableFeatures({}) core-only). SPEED ~parity: TTDataRendered 868 vs 912ms, TTNetworkQuiet 487 vs 502ms (within run-to-run noise; render was never the bottleneck once virtualized). Memory a touch lower (heapsnap 5.74 vs 8.22MB). Migration: createSolidTable→createTable, tableFeatures({}), FlexRender component, getAllCells(). Beta API — not a stable-release result.</td>
+    </tr>
+        <tr>
+      <td>2026-07-01T02:12:22Z</td>
+      <td>stocktake</td>
+      <td>own-baked-table2</td>
+      <td>dd6ea7c</td>
+      <td>11c Apple M3 Pro · darwin 23.6.0 · Chrome/149</td>
+      <td>6x</td>
+      <td>none</td>
+      <td>cold+warm</td>
+      <td>19</td>
+      <td>5</td>
+      <td class="headline">458 <span class="spread">(443–684)</span></td>
+      <td class="headline">655 <span class="spread">(635–906)</span></td>
+      <td>1</td>
+      <td>376 <span class="spread">(362–381)</span></td>
+      <td>4 <span class="spread">(3–5)</span></td>
+      <td>112 <span class="spread">(104–356)</span></td>
+      <td>107 <span class="spread">(100–463)</span></td>
+      <td>0</td>
+      <td>940 <span class="spread">(856–1192)</span></td>
+      <td>6.6</td>
+      <td>3.41</td>
+      <td>615</td>
+      <td>6</td>
+      <td>53.8</td>
+      <td>17.1</td>
+      <td>5</td>
+      <td>HAND-ROLLED virtualized table (src/table/, no table lib — solid-js only). Same 1 GraphQL POST (:8000), all 1506 fetched, ~19 rows mounted. Real &lt;table&gt;&lt;tbody&gt;&lt;tr&gt;; virtualization via aria-hidden spacer rows, so readySignal/count = 'tbody tr:not([aria-hidden])' excludes spacers+header. BUNDLE is the standout: 36KB raw / 12KB gzip — vs custom-v8 103/29.8, v9-beta 80/29.8, plain-fetch 18/7.5. SPEED best of the table branches: TTDataRendered 655ms (vs tanstack-v8 912, v9 868), TTNetworkQuiet 458ms. Memory lowest: heapsnap 3.41MB (vs v8 8.22, v9 5.74). LCP ~940ms non-null (largest paint = the rendered viewport rows). dataItemCount=19 is MOUNTED rows not the 1506 dataset.</td>
+    </tr>
+        <tr>
+      <td>2026-07-01T02:55:12Z</td>
+      <td>stocktake</td>
+      <td>tan-stack-query-and-graphql-client2</td>
+      <td>40783ca</td>
+      <td>11c Apple M3 Pro · darwin 23.6.0 · Chrome/149</td>
+      <td>6x</td>
+      <td>none</td>
+      <td>cold+warm</td>
+      <td>19</td>
+      <td>5</td>
+      <td class="headline">491 <span class="spread">(444–699)</span></td>
+      <td class="headline">1030 <span class="spread">(947–1236)</span></td>
+      <td>1</td>
+      <td>382 <span class="spread">(367–393)</span></td>
+      <td>4 <span class="spread">(2–5)</span></td>
+      <td>132 <span class="spread">(108–380)</span></td>
+      <td>120 <span class="spread">(104–446)</span></td>
+      <td>0</td>
+      <td>1280 <span class="spread">(1216–1532)</span></td>
+      <td>3.36</td>
+      <td>4.11</td>
+      <td>615</td>
+      <td>6</td>
+      <td>143</td>
+      <td>43</td>
+      <td>6</td>
+      <td>HEAVIER GraphQL stack: @tanstack/solid-query (createQuery + QueryClientProvider) + graphql-request GraphQLClient + codegen SDK, over the SAME hand-rolled table (src/table/). Still 1 GraphQL POST, 1506 fetched, ~19 mounted. BUNDLE is the heaviest of all branches: 125KB raw / 43KB over-wire cold (37KB steady gzip) vs own-baked 36/17, tanstack-table-v8 103/34.7, plain-fetch 18/7.5. SPEED: TTNetworkQuiet 491ms (~parity with all gql branches — same 1 request), TTDataRendered 1030ms — SLOWER than the plain-graphqlFetch own-baked table (655ms) despite identical table+data: the extra ~375ms is Query/graphql-request/SDK parse+execute+wrapper overhead on the critical path under 6x CPU. Confirms: heavier client buys caching/DX but costs bundle + startup here. COLLECTOR v6: fixed fetch-URL resolution — graphql-request passes a non-string fetch input that v5 recorded as 'undefined' (dropped by the /graphql filter); resolveFetchUrl() now handles string|Request|URL. Without the fix this row's data-request metrics would have been null.</td>
+    </tr>
+    <!-- PERF_ROWS_INSERT_BEFORE_THIS -->
+  </tbody>
+</table>
+<footer>
+  Newest rows at the bottom. Format version 4. Append-only via
+  <code>append-row.mjs</code>; the appender refuses to write if the row marker is missing.
+</footer>
+</body>
+</html>
