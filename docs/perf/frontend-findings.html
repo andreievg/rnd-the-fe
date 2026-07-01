@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Frontend exploration — findings &amp; recommendations</title>
+<style>
+  :root {
+    --fg: #1a1a2e; --muted: #5a5a72; --line: #e2e2ec; --accent: #2d6cdf;
+    --good: #1f8a4c; --bad: #c0392b; --warn: #a06a00;
+    --headline-bg: #e8f5e9; --card: #fafafb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: var(--fg); margin: 0; padding: 0; background: #fff;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  header.hero { border-bottom: 3px solid var(--accent); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  h1 { font-size: 2.1rem; margin: 0 0 .35rem; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 1.05rem; margin: 0; }
+  h2 {
+    font-size: 1.45rem; margin: 2.75rem 0 .75rem; padding-top: .5rem;
+    border-top: 1px solid var(--line); letter-spacing: -0.01em;
+  }
+  h2 .n { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: .4rem; }
+  h3 { font-size: 1.1rem; margin: 1.5rem 0 .4rem; }
+  p, li { color: #23233a; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: #f2f3f7; padding: .1em .4em; border-radius: 4px;
+    font: 13.5px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  pre {
+    background: #1e1e2e; color: #e8e8f0; padding: 1rem 1.15rem; border-radius: 8px;
+    overflow-x: auto; font: 13px/1.55 ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  pre .c { color: #8b8ba0; }  pre .k { color: #c792ea; } pre .s { color: #c3e88d; } pre .f { color: #82aaff; }
+  .lede { font-size: 1.08rem; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 1rem 1.25rem; border-radius: 0 8px 8px 0; }
+  ul.branches { list-style: none; padding: 0; margin: 1rem 0; }
+  ul.branches li { padding: .55rem 0; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+  ul.branches li:last-child { border-bottom: none; }
+  ul.branches .b { font-family: ui-monospace, Menlo, monospace; font-size: .9rem; min-width: 300px; }
+  ul.branches .d { color: var(--muted); font-size: .95rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  th, td { border: 1px solid var(--line); padding: .45rem .6rem; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; white-space: normal; }
+  thead th { background: #f4f5fa; position: sticky; top: 0; }
+  tbody tr:nth-child(even) { background: #fbfbfd; }
+  .headline { background: var(--headline-bg); font-weight: 600; }
+  thead th.headline { background: #c8e6c9; }
+  .win { color: var(--good); font-weight: 700; }
+  .cost { color: var(--bad); font-weight: 700; }
+  .spread { color: #9a9ab0; font-weight: 400; font-size: .88em; }
+  .note-inline { color: var(--muted); font-size: .82rem; }
+  .callout { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: .85rem 1.15rem; margin: 1.25rem 0; }
+  .callout b { color: var(--warn); }
+  .takeaway { background: #eef4ff; border: 1px solid #cfe0ff; border-radius: 8px; padding: .85rem 1.15rem; margin: 1.25rem 0; }
+  .takeaway b { color: var(--accent); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; padding: .1em .55em; border-radius: 20px; vertical-align: middle; }
+  .pill.beta { background: #fff3cd; color: #8a6d00; border: 1px solid #ffe082; }
+  footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+  .toc { columns: 2; column-gap: 2rem; font-size: .95rem; }
+  @media (max-width: 640px) { .toc { columns: 1; } ul.branches .b { min-width: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>Frontend exploration — findings &amp; recommendations</h1>
+  <p class="sub">Building the Stocktake page with SolidJS: data layer, tables, and virtualization — what we tried, what it cost, and what to pick.</p>
+</header>
+
+<p class="lede">
+  I spent this exploration building one real screen — the <b>Stocktake table</b> — several
+  different ways, measuring each under identical conditions, and comparing bundle size and
+  load performance. This document summarises the branches, the numbers, and the reasoning
+  behind the recommendations.
+</p>
+
+<!-- ============================================================ -->
+<h2><span class="n">1.</span>What was done</h2>
+
+<p>
+  Starting from a SolidJS + webpack base with <a href="https://vanilla-extract.style/">vanilla-extract</a>
+  CSS, I layered on one concern at a time: a hand-rolled GraphQL layer (with a codegen plugin,
+  test-covered), then a real table — first via <a href="https://tanstack.com/table">TanStack Table</a>,
+  then hand-rolled, and finally a heavier data stack using
+  <a href="https://tanstack.com/query">TanStack Query</a> + a GraphQL client with a codegen-generated SDK.
+</p>
+
+<p>Each stage is its own branch on the fork (<a href="https://github.com/andreievg/rnd-the-fe">andreievg/rnd-the-fe</a>):</p>
+
+<ul class="branches">
+  <li>
+    <span class="b"><a href="https://github.com/andreievg/rnd-the-fe/tree/solid">solid</a></span>
+    <span class="d">SolidJS + webpack starter (baseline shell, no data).</span>
+  </li>
+  <li>
+    <span class="b"><a href="https://github.com/andreievg/rnd-the-fe/tree/base-graphql">base-graphql</a></span>
+    <span class="d">Table + vanilla-extract + hand-rolled GraphQL layer (<code>graphqlFetch</code>), renders all rows (no virtualization).</span>
+  </li>
+  <li>
+    <span class="b"><a href="https://github.com/andreievg/rnd-the-fe/tree/tan-stack-table">tan-stack-table</a></span>
+    <span class="d">TanStack Table (v8) + solid-virtual — virtualized.</span>
+  </li>
+  <li>
+    <span class="b"><a href="https://github.com/andreievg/rnd-the-fe/tree/own-backed-table">own-backed-table</a></span>
+    <span class="d">Hand-rolled virtualized table (solid-js only, no table library).</span>
+  </li>
+  <li>
+    <span class="b"><a href="https://github.com/andreievg/rnd-the-fe/tree/tan-stack-query-and-graphql-client">tan-stack-query-and-graphql-client</a></span>
+    <span class="d">Heavier stack: TanStack Query + GraphQL client + codegen-generated SDK.</span>
+  </li>
+  <li>
+    <span class="b"><a href="https://github.com/andreievg/rnd-the-fe/tree/tests-for-plugin">tests-for-plugin</a></span>
+    <span class="d">The codegen plugin, validated with tests.</span>
+  </li>
+  <li>
+    <span class="b"><a href="https://github.com/andreievg/rnd-the-fe/tree/own-table-no-virtualisation-editable">own-table-no-virtualisation-editable</a></span>
+    <span class="d">Editable list + a zero-reactivity static-HTML baseline (<code>static-baseline/index.html</code>) — the "do we even need virtualization?" test.</span>
+  </li>
+</ul>
+
+<p class="note-inline">
+  Full per-run metrics (5 runs each, warm-up dropped, median + spread) live in
+  <a href="./frontend-runs.html">docs/perf/frontend-runs.html</a> on <code>main</code>.
+</p>
+
+<!-- ============================================================ -->
+<h2><span class="n">2.</span>Bundle size &amp; performance summary</h2>
+
+<p>
+  All measured on the same machine (Apple M3&nbsp;Pro, Chrome 149) at <b>6× CPU throttle</b>,
+  5 runs each (warm-up dropped), reported as <b>median (min–max)</b>. The two green columns are
+  the headline, content-based metrics — <b>TTNetworkQuiet</b> (data settled) and
+  <b>TTDataRendered</b> (rows actually on screen), not the misleading <code>load</code> event.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Branch / approach</th>
+      <th>Over-wire<br>bundle (gzip)</th>
+      <th class="headline">⏱ TTNetworkQuiet</th>
+      <th class="headline">⏱ TTDataRendered</th>
+      <th>DOM nodes</th>
+      <th>Heap (live)</th>
+      <th>Rows</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>solid</code> — starter shell</td>
+      <td>7.5 KB</td>
+      <td class="headline">—</td>
+      <td class="headline">73 ms</td>
+      <td>15</td>
+      <td>1.2 MB</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><code>base-graphql</code> — GraphQL, <b>render all rows</b></td>
+      <td>13.2 KB</td>
+      <td class="headline">504 <span class="spread">(477–716)</span></td>
+      <td class="headline cost">1400 <span class="spread">(1345–1610)</span></td>
+      <td class="cost">27,159</td>
+      <td class="cost">29.8 MB</td>
+      <td>1506</td>
+    </tr>
+    <tr>
+      <td><code>tan-stack-table</code> — v8, virtualized</td>
+      <td>34.7 KB</td>
+      <td class="headline">502 <span class="spread">(485–737)</span></td>
+      <td class="headline">912 <span class="spread">(860–1157)</span></td>
+      <td>519</td>
+      <td>8.2 MB</td>
+      <td>26 mtd</td>
+    </tr>
+    <tr>
+      <td><code>tan-stack-table</code> <span class="pill beta">v9 SPIKE</span> tree-shaken</td>
+      <td>29.8 KB</td>
+      <td class="headline">487 <span class="spread">(463–656)</span></td>
+      <td class="headline">868 <span class="spread">(815–1060)</span></td>
+      <td>519</td>
+      <td>5.7 MB</td>
+      <td>26 mtd</td>
+    </tr>
+    <tr>
+      <td><code>own-backed-table</code> — hand-rolled, virtualized</td>
+      <td class="win">17.1 KB</td>
+      <td class="headline win">458 <span class="spread">(443–684)</span></td>
+      <td class="headline win">655 <span class="spread">(635–906)</span></td>
+      <td>615</td>
+      <td class="win">3.4 MB</td>
+      <td>19 mtd</td>
+    </tr>
+    <tr>
+      <td><code>tan-stack-query-and-graphql-client</code> — heavy stack</td>
+      <td class="cost">43.0 KB</td>
+      <td class="headline">491 <span class="spread">(444–699)</span></td>
+      <td class="headline cost">1030 <span class="spread">(947–1236)</span></td>
+      <td>615</td>
+      <td>4.1 MB</td>
+      <td>19 mtd</td>
+    </tr>
+  </tbody>
+</table>
+
+<p class="note-inline">
+  <b>Reading the table:</b> the GraphQL branches all fetch the same 1506-row payload in one request,
+  so <b>TTNetworkQuiet is ~500 ms everywhere</b> — that floor is one request's latency, unbeatable by
+  a table/client choice. <b>TTDataRendered</b> is where the approaches diverge. "Rows" is <em>mounted</em>
+  DOM rows: 1506 for the non-virtualized branch, ~20–26 for the virtualized ones (dataset is 1506 for all).
+  † <code>load</code> and LCP are recorded in the full doc but are <b>not</b> ranked on — for an SPA they
+  fire long before the data the user came for is on screen.
+</p>
+
+<div class="takeaway">
+  <b>Headline result.</b> Virtualization is the single biggest lever: rendering all 1506 rows costs
+  <b>1400 ms</b> and 27k DOM nodes; virtualizing collapses render out of the critical path. Among the
+  virtualized options the <b>hand-rolled table is fastest and lightest</b> (655 ms, 17 KB, 3.4 MB) —
+  but see §5 for why TanStack Table is still the recommendation.
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="n">3.</span>On SolidJS</h2>
+
+<p>
+  I like Solid over React. State is <b>easier to reason about</b> and it's noticeably more
+  <b>performant</b>, while keeping a familiar React-like look and feel. We don't need
+  <code>zustand</code> + selectors for state — Solid's fine-grained reactivity handles it — and it
+  ships primitives (like <code>createResource</code>) that make hand-rolling a GraphQL layer
+  straightforward.
+</p>
+<p>
+  The trade-off is learning: the team would need to get comfortable with Solid's reactivity model.
+  Claude can help with that, and there's a primer here →
+  <a href="https://andreievg.github.io/learn-solidjs/">andreievg.github.io/learn-solidjs</a>.
+</p>
+
+<!-- ============================================================ -->
+<h2><span class="n">4.</span>The GraphQL layer — hand-roll or adopt?</h2>
+
+<p>
+  The first "build vs buy" decision is the data layer. The surprising finding: the heavier
+  off-the-shelf stack (<b>TanStack Query + graphql-request + generated SDK</b>) shows both a big
+  <b>bundle increase</b> (43 KB vs 17 KB over-wire) and a <b>performance hit</b> — TTDataRendered
+  <b>1030 ms vs 655 ms</b> for the same table and same single request. The extra ~375 ms is the
+  client's parse/execute/wrapper overhead on the critical path under throttle.
+</p>
+
+<div class="callout">
+  <b>Why the hit, when caching should help?</b> This is a cold first-load of a read-once page — it
+  never exercises Query's caching, dedup, or background-refetch benefits, so here they're pure cost.
+  On a screen that refetches, reuses cache across navigations, or runs many queries, that calculus
+  changes. We're measuring the worst case for a caching layer.
+</div>
+
+<p>
+  We can hand-roll the layer instead. A codegen <b>plugin</b> generates typed operations, and we can
+  <b>validate it with tests</b> — see the
+  <a href="https://github.com/andreievg/rnd-the-fe/tree/tests-for-plugin">tests-for-plugin</a> branch.
+  Calling the generated client (no cache) looks like this:
+</p>
+
+<pre><span class="k">const</span> data = <span class="k">await</span> <span class="f">graphqlFetch</span>(StocktakeLines, {
+  stocktakeId: STOCKTAKE_ID,
+  storeId: STORE_ID,
+  page: { offset: state.rows.length, first: CHUNK },
+  sort: [{ key: <span class="s">'itemName'</span>, desc: <span class="k">false</span> }],
+});</pre>
+
+<p>
+  It's easy to wrap this with <code>createResource</code> into a <b>global</b> resource that exposes a
+  <code>refetch</code> method plus a condition to only render on the first <code>refetch</code>
+  (called in <code>onMount</code>). That gives us the ergonomics we actually need without the bundle
+  and startup cost of the full client.
+</p>
+
+<div class="takeaway">
+  <b>Recommendation.</b> Hand-roll the GraphQL layer with a tested codegen plugin + a
+  <code>createResource</code> wrapper. Reach for TanStack Query only on screens that genuinely need
+  cross-view caching / refetch orchestration.
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="n">5.</span>Tables &amp; virtualization</h2>
+
+<p>
+  Hand-rolling a table is easy for the <b>base case</b> — and, as the numbers show, it's the fastest
+  and lightest. But complexity grows fast as features are added, and the biggest one is
+  <b>virtualization, which we absolutely need.</b>
+</p>
+
+<p>
+  I tried several ways around building it: growing the list with a "loading as you go" approach, and
+  building virtualization from scratch. In practice it's a genuinely <b>complex task</b> — think about
+  prepending rows when scrolling up, having to measure them, then adjusting scroll position to
+  compensate, and so on.
+</p>
+
+<h3>"Maybe we don't need virtualization"?</h3>
+<p>
+  I tested that assumption directly. With an editable list, rendering all rows is <b>slow</b> — and
+  crucially, it's <b>not</b> a Solid or reactivity problem: I stripped it down to a
+  <b>completely static HTML page with zero reactivity</b> and it was <b>still slow</b>. That baseline is
+  at <code>static-baseline/index.html</code> on the
+  <a href="https://github.com/andreievg/rnd-the-fe/tree/own-table-no-virtualisation-editable">own-table-no-virtualisation-editable</a>
+  branch. The conclusion: the cost is the sheer DOM size (27k nodes for 1506 rows), so virtualization
+  is non-negotiable for large tables regardless of framework.
+</p>
+
+<h3>So: adopt TanStack Table</h3>
+<p>
+  Given we need virtualization <em>and</em> a pile of other features (sorting, filtering, column
+  sizing, selection…) that a hand-rolled table would have to grow into, <b>TanStack Table is worth its
+  bundle size.</b> And the <b>v9 Solid version</b> is catered more to Solid with <b>advanced
+  tree-shaking</b> — the spike already showed ~15% smaller bundle (29.8 vs 34.7 KB gzip) at speed
+  parity, and it should improve further as it stabilises. <span class="pill beta">v9 is beta</span>
+</p>
+
+<div class="takeaway">
+  <b>Recommendation.</b> Use TanStack Table (target v9 for Solid once stable) for virtualization + a
+  mature feature set. The hand-rolled table wins on raw numbers but loses on maintenance the moment we
+  need real table features.
+</div>
+
+<!-- ============================================================ -->
+<h2><span class="n">6.</span>Bonus takeaway — chunked loading for big tables</h2>
+
+<p>
+  For large tables, <b>query for just ~100 rows first, then immediately fetch the rest</b> and append
+  to the list. This shows the table to the user quickly (first paint on a small slice) while the full
+  dataset streams in behind it — a much better perceived-performance story than waiting on the whole
+  1506-row payload before rendering anything.
+</p>
+
+<footer>
+  Measurements produced by the <code>perf-measure</code> skill · 6× CPU throttle · median of 5 runs (warm-up dropped) ·
+  Apple M3 Pro / Chrome 149. Full data: <a href="./frontend-runs.html">frontend-runs.html</a>.
+  Repo: <a href="https://github.com/andreievg/rnd-the-fe">andreievg/rnd-the-fe</a>.
+</footer>
+
+</div>
+</body>
+</html>
