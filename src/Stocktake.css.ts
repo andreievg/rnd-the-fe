@@ -1,5 +1,30 @@
-import { style, globalStyle } from "@vanilla-extract/css";
+import { style, globalStyle, keyframes } from "@vanilla-extract/css";
 import { vars } from "./theme.css";
+
+const spin = keyframes({
+  to: { transform: "rotate(360deg)" },
+});
+
+export const loadingChip = style({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  padding: "4px 10px",
+  borderRadius: "12px",
+  background: vars.color.rowAltBg,
+  border: `1px solid ${vars.color.border}`,
+  color: vars.color.textMuted,
+  fontSize: vars.font.sizeHeader,
+});
+
+export const spinner = style({
+  width: "12px",
+  height: "12px",
+  borderRadius: "50%",
+  border: `2px solid ${vars.color.border}`,
+  borderTopColor: vars.color.primary,
+  animation: `${spin} 0.7s linear infinite`,
+});
 
 export const page = style({
   fontFamily: vars.font.family,
@@ -69,6 +94,69 @@ export const actionIcon = style({
   color: vars.color.primary,
   fontSize: "16px",
   lineHeight: 1,
+});
+
+export const deleteButton = style({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  height: "36px",
+  padding: "0 16px",
+  borderRadius: "24px",
+  border: "1px solid rgb(232, 168, 168)",
+  background: "rgb(253, 245, 245)",
+  color: "rgb(197, 48, 48)",
+  fontFamily: vars.font.family,
+  fontSize: vars.font.sizeBody,
+  fontWeight: vars.font.weightSemibold,
+  cursor: "pointer",
+});
+
+export const rowCheckbox = style({
+  width: "16px",
+  height: "16px",
+  margin: 0,
+  cursor: "pointer",
+  accentColor: vars.color.primary,
+});
+
+/* ---- Editable cells ---- */
+export const editInput = style({
+  width: "100%",
+  minWidth: "80px",
+  boxSizing: "border-box",
+  padding: "4px 6px",
+  border: `1px solid ${vars.color.border}`,
+  borderRadius: "6px",
+  fontFamily: vars.font.family,
+  fontSize: vars.font.sizeBody,
+  color: vars.color.text,
+  background: vars.color.rowBg,
+  selectors: {
+    "&:focus": {
+      outline: "none",
+      borderColor: vars.color.primary,
+    },
+  },
+});
+
+export const editNumber = style({
+  textAlign: "right",
+  minWidth: "64px",
+});
+
+export const editSelect = style({
+  width: "100%",
+  minWidth: "110px",
+  boxSizing: "border-box",
+  padding: "4px 6px",
+  border: `1px solid ${vars.color.border}`,
+  borderRadius: "6px",
+  fontFamily: vars.font.family,
+  fontSize: vars.font.sizeBody,
+  color: vars.color.text,
+  background: vars.color.rowBg,
+  cursor: "pointer",
 });
 
 /* ---- Sub bar: description + filter ---- */

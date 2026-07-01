@@ -5,7 +5,9 @@
  * string plus `Variables` / `Result` types. `graphqlFetch` ties them together
  * so the call site is fully typed with no runtime dependency.
  */
-export const GRAPHQL_ENDPOINT = "http://localhost:8000/graphql";
+// LAN IP so the backend is reachable from other devices (e.g. a tablet) hitting
+// the build served on 192.168.1.75:3121, not just localhost.
+export const GRAPHQL_ENDPOINT = "http://192.168.1.75:8000/graphql";
 
 /**
  * A query bundled with its types. Codegen emits one of these per operation:

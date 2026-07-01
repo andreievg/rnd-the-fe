@@ -1,8 +1,13 @@
 import { For, Show, Dynamic } from "solid-js/web";
-import { createSignal, onCleanup, onMount, type JSX } from "solid-js";
+import type { JSX } from "solid-js";
 import * as s from "./Table.css";
 import type { AnyColumn } from "./types";
-import { createVirtualizer } from "./virtual";
+
+export interface ScrollMetrics {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
 
 export interface TableProps<R> {
   data: R[];
@@ -10,12 +15,10 @@ export interface TableProps<R> {
   getRowId: (row: R) => string;
   /** Optional status shown below the table (e.g. loading / error / empty). */
   status?: JSX.Element;
-  /** Fixed row height in px used for virtualization. Default 52. */
-  rowHeight?: number;
-  /** Max height of the scroll viewport in px. Default 640. */
+  /** Fixed height of the internal scroll area in px. Default 560. */
   maxHeight?: number;
-  /** Extra rows rendered above/below the viewport. Default 6. */
-  overscan?: number;
+  /** Called on scroll with the current scroll metrics (for infinite scroll). */
+  onScroll?: (metrics: ScrollMetrics) => void;
 }
 
 function cellClass(col: AnyColumn<unknown>): string {
@@ -27,48 +30,22 @@ function headClass(col: AnyColumn<unknown>): string {
 }
 
 export function Table<R>(props: TableProps<R>): JSX.Element {
-  const rowHeight = () => props.rowHeight ?? 52;
-  const maxHeight = () => props.maxHeight ?? 640;
+  const maxHeight = () => props.maxHeight ?? 560;
 
-  const [scrollTop, setScrollTop] = createSignal(0);
-  const [viewportHeight, setViewportHeight] = createSignal(maxHeight());
-
-  let scroller: HTMLDivElement | undefined;
-
-  const measure = () => {
-    if (scroller) setViewportHeight(scroller.clientHeight);
-  };
-
-  onMount(() => {
-    measure();
-    // Track viewport size changes (e.g. window resize) without a scroll event.
-    const ro = new ResizeObserver(measure);
-    if (scroller) ro.observe(scroller);
-    onCleanup(() => ro.disconnect());
-  });
-
-  const range = createVirtualizer({
-    count: () => props.data.length,
-    rowHeight,
-    scrollTop,
-    viewportHeight,
-    overscan: props.overscan,
-  });
-
-  // The visible slice of rows, paired with their absolute index.
-  const visibleRows = () => {
-    const { start, end } = range();
-    const out: { row: R; index: number }[] = [];
-    for (let i = start; i < end; i++) out.push({ row: props.data[i], index: i });
-    return out;
-  };
-
+  // No virtualization: every row is in the DOM. The container scrolls
+  // internally so a parent can drive infinite loading from the scroll metrics.
   return (
     <div
       class={s.wrap}
-      ref={scroller}
       style={{ "max-height": `${maxHeight()}px` }}
-      onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      onScroll={(e) => {
+        const el = e.currentTarget;
+        props.onScroll?.({
+          scrollTop: el.scrollTop,
+          scrollHeight: el.scrollHeight,
+          clientHeight: el.clientHeight,
+        });
+      }}
     >
       <table class={s.table}>
         <thead>
@@ -86,21 +63,17 @@ export function Table<R>(props: TableProps<R>): JSX.Element {
           </tr>
         </thead>
         <tbody>
-          {/* Top spacer preserves scroll height for rows above the window. */}
-          <Show when={range().paddingTop > 0}>
-            <tr aria-hidden="true" style={{ height: `${range().paddingTop}px` }} />
-          </Show>
-          <For each={visibleRows()}>
-            {(entry) => (
-              <tr class={s.row} style={{ height: `${rowHeight()}px` }}>
+          <For each={props.data}>
+            {(row, rowIndex) => (
+              <tr class={s.row}>
                 <For each={props.columns}>
                   {(col) => (
                     <td class={cellClass(col as AnyColumn<unknown>)}>
                       <Dynamic
                         component={col.cell}
-                        value={col.accessor ? col.accessor(entry.row) : undefined}
-                        row={entry.row}
-                        rowIndex={entry.index}
+                        value={col.accessor ? col.accessor(row) : undefined}
+                        row={row}
+                        rowIndex={rowIndex()}
                       />
                     </td>
                   )}
@@ -108,10 +81,6 @@ export function Table<R>(props: TableProps<R>): JSX.Element {
               </tr>
             )}
           </For>
-          {/* Bottom spacer preserves scroll height for rows below the window. */}
-          <Show when={range().paddingBottom > 0}>
-            <tr aria-hidden="true" style={{ height: `${range().paddingBottom}px` }} />
-          </Show>
         </tbody>
       </table>
       <Show when={props.status}>
