@@ -7,6 +7,20 @@
  */
 export const GRAPHQL_ENDPOINT = "http://localhost:8000/graphql";
 
+/**
+ * A query bundled with its types. Codegen emits one of these per operation:
+ * the query string plus phantom Result / Variables types (type-only, never
+ * assigned at runtime). `graphqlFetch` infers both from the passed document, so
+ * a query can only be called with its own variables and yields its own result.
+ */
+export interface TypedDocument<TResult, TVariables> {
+  query: string;
+  /** Phantom — carries the result type only; not present at runtime. */
+  __result?: TResult;
+  /** Phantom — carries the variables type only; not present at runtime. */
+  __variables?: TVariables;
+}
+
 interface GraphQLError {
   message: string;
 }
@@ -17,14 +31,14 @@ interface GraphQLResponse<TResult> {
 }
 
 export async function graphqlFetch<TResult, TVariables>(
-  query: string,
+  document: TypedDocument<TResult, TVariables>,
   variables: TVariables,
   endpoint: string = GRAPHQL_ENDPOINT,
 ): Promise<TResult> {
   const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
+    body: JSON.stringify({ query: document.query, variables }),
   });
 
   if (!res.ok) {
