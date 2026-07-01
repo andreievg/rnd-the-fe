@@ -1,5 +1,6 @@
 /* @refresh reload */
 import { render } from "solid-js/web";
+import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import Stocktake from "./Stocktake";
 import "./index.css";
 
@@ -9,4 +10,13 @@ if (!root) {
   throw new Error("Root element #root was not found in the document.");
 }
 
-render(() => <Stocktake />, root);
+const queryClient = new QueryClient();
+
+render(
+  () => (
+    <QueryClientProvider client={queryClient}>
+      <Stocktake />
+    </QueryClientProvider>
+  ),
+  root,
+);

@@ -9,10 +9,12 @@
     "build": "webpack --mode production",
     "serve": "webpack serve --mode production",
     "preview": "npm run build && npm run serve",
-    "codegen": "node codegen/run.js",
+    "codegen": "graphql-codegen --config codegen.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/solid-query": "^5.101.2",
+    "graphql-request": "^7.4.0",
     "solid-js": "^1.9.3"
   },
   "devDependencies": {
@@ -20,13 +22,16 @@
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-typescript": "^7.26.0",
     "@graphql-codegen/cli": "^7.1.3",
-    "@graphql-codegen/plugin-helpers": "^7.0.1",
+    "@graphql-codegen/typescript": "4.1.6",
+    "@graphql-codegen/typescript-graphql-request": "6.4.0",
+    "@graphql-codegen/typescript-operations": "4.6.1",
     "@vanilla-extract/css": "^1.21.1",
     "@vanilla-extract/webpack-plugin": "^2.3.27",
     "babel-loader": "^9.2.1",
     "babel-preset-solid": "^1.9.3",
     "css-loader": "^7.1.2",
     "graphql": "^16.14.2",
+    "graphql-tag": "^2.12.7",
     "html-webpack-plugin": "^5.6.3",
     "mini-css-extract-plugin": "^2.10.2",
     "style-loader": "^4.0.0",

@@ -1,8 +1,9 @@
-import { Show, createSignal, onMount } from 'solid-js';
+import { Show } from 'solid-js';
+import { createQuery } from '@tanstack/solid-query';
 import * as s from './Stocktake.css';
 import { stocktakeMeta } from './stocktakeData';
-import { graphqlFetch } from './graphql';
-import { StocktakeLines, type StocktakeLinesResult } from './stocktakeLines.generated';
+import { sdk } from './api';
+import { StocktakeLineSortFieldInput, type StocktakeLinesQuery } from './generated/sdk';
 import {
   Table,
   defineColumns,
@@ -19,7 +20,7 @@ const STOCKTAKE_ID = '019f17d0-1444-795c-ac53-da2216c73cff';
 const STORE_ID = '5B28901C52396E4BB098B9862CCF5DF9';
 
 // A single line node straight from the generated GraphQL result type.
-type LineNode = StocktakeLinesResult['stocktakeLines']['nodes'][number];
+type LineNode = StocktakeLinesQuery['stocktakeLines']['nodes'][number];
 
 /**
  * Composite cell bound to LineNode: no accessor, computes from the whole row.
@@ -80,30 +81,26 @@ const columns = defineColumns<LineNode>()([
 ]);
 
 function Stocktake() {
-  const [rows, setRows] = createSignal<LineNode[]>([]);
-  const [error, setError] = createSignal<string | null>(null);
-  const [loading, setLoading] = createSignal(true);
-
-  onMount(async () => {
-    try {
-      // Variables are checked against StocktakeLines; result type is inferred.
-      const data = await graphqlFetch(StocktakeLines, {
+  const query = createQuery(() => ({
+    queryKey: ['stocktakeLines', STOCKTAKE_ID, STORE_ID],
+    queryFn: () =>
+      sdk.stocktakeLines({
         stocktakeId: STOCKTAKE_ID,
         storeId: STORE_ID,
         page: {},
-        sort: [{ key: 'itemName', desc: false }],
-      });
-      setRows(data.stocktakeLines.nodes);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  });
+        sort: [{ key: StocktakeLineSortFieldInput.ItemName, desc: false }],
+      }),
+  }));
+
+  const rows = (): LineNode[] => query.data?.stocktakeLines.nodes ?? [];
 
   const status = () => {
-    if (loading()) return 'Loading…';
-    if (error()) return `Failed to load: ${error()}`;
+    if (query.isPending) return 'Loading…';
+    if (query.error) {
+      return `Failed to load: ${
+        query.error instanceof Error ? query.error.message : String(query.error)
+      }`;
+    }
     return undefined;
   };
 
