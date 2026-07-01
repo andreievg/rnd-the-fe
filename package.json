@@ -10,6 +10,8 @@
     "serve": "webpack serve --mode production",
     "preview": "npm run build && npm run serve",
     "codegen": "node codegen/run.js",
+    "gen-static": "node scripts/gen-static.mjs",
+    "serve-static": "serve -s static-baseline -l 3122",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
