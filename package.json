@@ -10,7 +10,8 @@
     "serve": "webpack serve --mode production",
     "preview": "npm run build && npm run serve",
     "codegen": "node codegen/run.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"codegen/__tests__/*.test.js\""
   },
   "dependencies": {
     "solid-js": "^1.9.3"

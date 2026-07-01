@@ -1,24 +1,33 @@
 /**
  * Custom graphql-codegen plugin.
  *
- * For each operation in a .graphql document it emits:
- *   - export const <Name>Document: string   (the query text, with used fragments inlined)
+ * For each fragment in a .graphql document it emits:
+ *   - export type <Name>Fragment = { ... }   (reusable, referenced where spread)
+ *
+ * For each operation it emits:
  *   - export type <Name>Variables = { ... }  (from the operation's variable defs)
  *   - export type <Name>Result = { ... }     (walked against the schema for accurate nullability)
+ *   - export const <Name> = { query } as TypedDocument<Result, Variables>
+ *
+ * (<Name> is the operation/fragment name PascalCased.)
  *
  * It deliberately avoids the official @graphql-codegen/typescript plugins so the
  * project keeps a single, readable code path. Types are derived from the schema
- * AST via graphql's TypeInfo, so nullability / scalars are accurate.
+ * AST, so nullability / scalars are accurate.
+ *
+ * Two behaviours worth knowing:
+ *   - Inline fragments on a union/interface produce a DISCRIMINATED union
+ *     (`{ __typename: "A"; ... } | { __typename: "B"; ... }`), not a flat merge.
+ *   - Fragment spreads are referenced by their `<Name>Fragment` type
+ *     (intersected with any sibling fields), so fragments stay DRY and reusable.
  */
 const {
   Kind,
-  TypeInfo,
-  visit,
-  visitWithTypeInfo,
   isNonNullType,
   isListType,
   isScalarType,
   isEnumType,
+  isObjectType,
   print,
 } = require("graphql");
 
@@ -32,6 +41,11 @@ const SCALAR_MAP = {
   NaiveDate: "string",
   DateTime: "string",
 };
+
+/** PascalCase a name (operation/fragment names are usually camelCase). */
+function pascal(name) {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
 
 function tsForNamedType(type) {
   if (isScalarType(type)) {
@@ -60,57 +74,171 @@ function stripNull(rendered) {
   return rendered.endsWith(" | null") ? rendered.slice(0, -" | null".length) : rendered;
 }
 
-/** Walk a selection set against its GraphQL type, returning a TS object-type body. */
-function renderSelectionSet(selectionSet, parentType, schema, fragments) {
-  const lines = [];
-  for (const sel of selectionSet.selections) {
-    if (sel.kind === Kind.FIELD) {
-      const fieldName = sel.name.value;
-      if (fieldName === "__typename") {
-        lines.push(`  __typename: string;`);
-        continue;
-      }
-      const fieldDef = parentType.getFields()[fieldName];
-      if (!fieldDef) continue;
-      const alias = sel.alias ? sel.alias.value : fieldName;
-      const fieldType = fieldDef.type;
-      const namedType = getNamedType(fieldType);
-
-      let rendered;
-      if (sel.selectionSet) {
-        const body = renderSelectionSet(sel.selectionSet, namedType, schema, fragments);
-        rendered = wrapType(fieldType, body);
-      } else {
-        rendered = wrapType(fieldType, tsForNamedType(namedType));
-      }
-      lines.push(`  ${alias}: ${rendered};`);
-    } else if (sel.kind === Kind.FRAGMENT_SPREAD) {
-      const frag = fragments[sel.name.value];
-      if (!frag) continue;
-      const fragType = schema.getType(frag.typeCondition.name.value);
-      const body = renderSelectionSet(frag.selectionSet, fragType, schema, fragments);
-      // Merge fragment fields inline (strip the wrapping braces).
-      lines.push(innerLines(body));
-    } else if (sel.kind === Kind.INLINE_FRAGMENT) {
-      const condType = sel.typeCondition
-        ? schema.getType(sel.typeCondition.name.value)
-        : parentType;
-      const body = renderSelectionSet(sel.selectionSet, condType, schema, fragments);
-      lines.push(innerLines(body));
-    }
-  }
-  return `{\n${lines.join("\n")}\n}`;
-}
-
-/** Pull the inner lines out of a "{ ... }" body so fragment fields merge flat. */
-function innerLines(body) {
-  return body.replace(/^\{\n/, "").replace(/\n\}$/, "");
-}
-
 function getNamedType(type) {
   let t = type;
   while (t.ofType) t = t.ofType;
   return t;
+}
+
+/**
+ * Render a TS object body for a plain list of FIELD selections against an
+ * object/interface type. (No inline-fragment branching here — that's handled by
+ * the caller in renderSelectionSet.) Returns `{\n  field: type;\n  ...\n}`.
+ *
+ * @param objectFields  array of FIELD selection nodes
+ * @param parentType    the GraphQL object/interface type they belong to
+ */
+function renderFields(objectFields, parentType, schema, fragments) {
+  const lines = [];
+  for (const sel of objectFields) {
+    const fieldName = sel.name.value;
+    if (fieldName === "__typename") {
+      // Discriminant. When this is a concrete object type, narrow to a literal;
+      // otherwise (abstract type with no branches) keep it as string.
+      const literal = isObjectType(parentType) ? JSON.stringify(parentType.name) : "string";
+      lines.push(`  __typename: ${literal};`);
+      continue;
+    }
+    // Unions have no fields of their own (only __typename is selectable at the
+    // top level), so guard getFields — a stray field here is simply skipped.
+    const fieldDef = parentType.getFields ? parentType.getFields()[fieldName] : undefined;
+    if (!fieldDef) continue;
+    const alias = sel.alias ? sel.alias.value : fieldName;
+    const fieldType = fieldDef.type;
+    const namedType = getNamedType(fieldType);
+
+    let rendered;
+    if (sel.selectionSet) {
+      const body = renderSelectionSet(sel.selectionSet, namedType, schema, fragments);
+      rendered = wrapType(fieldType, body);
+    } else {
+      rendered = wrapType(fieldType, tsForNamedType(namedType));
+    }
+    lines.push(`  ${alias}: ${rendered};`);
+  }
+  return `{\n${lines.join("\n")}\n}`;
+}
+
+/**
+ * Walk a selection set against its GraphQL type, returning a TS type.
+ *
+ * - Direct fields and fragment spreads contribute to a "base" object.
+ * - Fragment spreads are referenced by their `<Name>Fragment` type (intersected
+ *   with the base), so the fragment definition stays the single source of truth.
+ * - Inline fragments WITH a type condition on a different type become separate
+ *   union branches (discriminated). Inline fragments with no/own type condition
+ *   are merged into the base.
+ *
+ * Result shapes:
+ *   - just fields:                 `{ ... }`
+ *   - fields + spread(s):          `{ ... } & FooFragment`
+ *   - inline fragments (branches): `(base & { ...A }) | (base & { ...B })`
+ */
+function renderSelectionSet(selectionSet, parentType, schema, fragments) {
+  const directFields = [];
+  const spreadRefs = []; // `<Name>Fragment` type references
+  const branches = []; // inline fragments on a more specific type → union members
+
+  for (const sel of selectionSet.selections) {
+    if (sel.kind === Kind.FIELD) {
+      directFields.push(sel);
+    } else if (sel.kind === Kind.FRAGMENT_SPREAD) {
+      const frag = fragments[sel.name.value];
+      if (!frag) continue;
+      spreadRefs.push(`${pascal(sel.name.value)}Fragment`);
+    } else if (sel.kind === Kind.INLINE_FRAGMENT) {
+      const condName = sel.typeCondition && sel.typeCondition.name.value;
+      // No type condition, or condition equal to the parent type → merge into base.
+      if (!condName || condName === parentType.name) {
+        for (const inner of sel.selectionSet.selections) {
+          if (inner.kind === Kind.FIELD) directFields.push(inner);
+          else if (inner.kind === Kind.FRAGMENT_SPREAD && fragments[inner.name.value]) {
+            spreadRefs.push(`${pascal(inner.name.value)}Fragment`);
+          } else if (inner.kind === Kind.INLINE_FRAGMENT) {
+            branches.push(inner);
+          }
+        }
+      } else {
+        branches.push(sel);
+      }
+    }
+  }
+
+  // Was __typename selected at this level? With branches, the discriminant moves
+  // INTO each branch (as a concrete-type literal), so we render the base without
+  // it and let each branch supply its own.
+  const baseSelectedTypename = directFields.some(
+    (f) => f.name.value === "__typename",
+  );
+
+  if (branches.length === 0) {
+    // No union: plain object body (+ any spread fragment intersections).
+    const baseBody = renderFields(directFields, parentType, schema, fragments);
+    return intersect(baseBody, spreadRefs);
+  }
+
+  // Discriminated union: render shared (base) fields once, then one member per
+  // branch with its concrete-type __typename literal.
+  const sharedFields = directFields.filter((f) => f.name.value !== "__typename");
+  const sharedBody = renderFields(sharedFields, parentType, schema, fragments);
+  const sharedRefs = intersect(sharedBody, spreadRefs);
+  const sharedParts =
+    sharedRefs === EMPTY_OBJECT ? [] : splitIntersection(sharedRefs);
+
+  const members = branches.map((br) => {
+    const condType = br.typeCondition
+      ? schema.getType(br.typeCondition.name.value)
+      : parentType;
+    const branchBody = renderSelectionSet(br.selectionSet, condType, schema, fragments);
+    // The discriminant literal for this concrete branch type.
+    const typenameField = baseSelectedTypename
+      ? `{\n  __typename: ${JSON.stringify(condType.name)};\n}`
+      : null;
+    const parts = [
+      ...(typenameField ? [typenameField] : []),
+      branchBody,
+      ...sharedParts,
+    ].filter((p) => p !== EMPTY_OBJECT);
+    const member = parts.length ? parts.join(" & ") : EMPTY_OBJECT;
+    // Parenthesise so the `&`-vs-`|` precedence is explicit and readable.
+    return `(${member})`;
+  });
+
+  return members.join(" | ");
+}
+
+/** Split an `A & B & C` string back into its parts (best-effort, top-level). */
+function splitIntersection(rendered) {
+  // Our intersections only join object-literals and bare identifiers with " & ".
+  // Object literals contain newlines, identifiers don't, so a simple split on
+  // " & " at brace-depth 0 is sufficient for what this plugin produces.
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < rendered.length; i++) {
+    const c = rendered[i];
+    if (c === "{") depth++;
+    else if (c === "}") depth--;
+    else if (depth === 0 && rendered.startsWith(" & ", i)) {
+      parts.push(rendered.slice(start, i));
+      i += 2;
+      start = i + 1;
+    }
+  }
+  parts.push(rendered.slice(start));
+  return parts;
+}
+
+const EMPTY_OBJECT = "{\n\n}";
+
+/** Intersect a base object body with zero or more type references. */
+function intersect(baseBody, refs) {
+  if (refs.length === 0) return baseBody;
+  // If the base object has no own fields, drop it from the intersection.
+  if (baseBody === EMPTY_OBJECT) {
+    return refs.length === 1 ? refs[0] : refs.join(" & ");
+  }
+  return [baseBody, ...refs].join(" & ");
 }
 
 /** Render a TS type for an input/variable type node (from variable definitions). */
@@ -224,12 +352,25 @@ module.exports = {
       "",
     ];
 
+    // --- Fragment types (emitted first so operations can reference them) ---
+    // Order by declaration across all documents.
+    for (const doc of documents) {
+      for (const def of doc.document.definitions) {
+        if (def.kind !== Kind.FRAGMENT_DEFINITION) continue;
+        const fragName = pascal(def.name.value);
+        const onType = schema.getType(def.typeCondition.name.value);
+        const body = renderSelectionSet(def.selectionSet, onType, schema, fragments);
+        out.push(`export type ${fragName}Fragment = ${body};`);
+        out.push("");
+      }
+    }
+
+    // --- Operations ---
     for (const doc of documents) {
       for (const def of doc.document.definitions) {
         if (def.kind !== Kind.OPERATION_DEFINITION || !def.name) continue;
         const name = def.name.value;
-        // PascalCase for the generated type / const names (operation name is camelCase).
-        const Name = name.charAt(0).toUpperCase() + name.slice(1);
+        const Name = pascal(name);
         const rootType =
           def.operation === "query"
             ? schema.getQueryType()
