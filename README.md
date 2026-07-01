@@ -1,5 +1,16 @@
 # React + TypeScript + Vite
 
+> ## 📊 Frontend exploration findings
+>
+> This fork explores building the **Stocktake page** with SolidJS — comparing data-layer
+> and table approaches on bundle size and performance.
+>
+> **→ [Read the findings &amp; performance results](https://andreievg.github.io/rnd-the-fe/perf/)** (hosted on GitHub Pages)
+>
+> - [Findings &amp; recommendations](https://andreievg.github.io/rnd-the-fe/perf/frontend-findings.html)
+> - [Raw performance metrics](https://andreievg.github.io/rnd-the-fe/perf/frontend-runs.html)
+> - [Static-HTML baseline](https://andreievg.github.io/rnd-the-fe/perf/static-baseline/index.html)
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 ## Getting started
