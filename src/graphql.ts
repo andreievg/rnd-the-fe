@@ -1,16 +1,16 @@
 /**
  * Type-safe GraphQL client over the browser `fetch`.
  *
- * DEMO VARIANT 2a — "graphql, parse() only".
+ * DEMO VARIANT 2b — "graphql, parse() + print()".
  *
- * The codegen output now bundles a PARSED AST (`DocumentNode`) instead of a raw
- * string, produced by graphql's `parse()`. This is the shape urql/Apollo
- * consume. We do NOT use graphql's `print()` here (that's demo 2b): we recover
- * the query text from the AST's attached source (`.loc`) so `graphql`'s heavy
- * printer never enters the bundle. Adding graphql's parser alone roughly
- * doubles the gzipped bundle vs. the string-based `tests-for-plugin` branch.
+ * Like demo 2a, the codegen output bundles a PARSED AST (`DocumentNode`) via
+ * graphql's `parse()`. Additionally, this client serialises the operation for
+ * the wire with graphql's `print()` — the same round-trip a naive AST-based
+ * client does. `print()` is graphql's pretty-printer and is comparatively bulky,
+ * so this is the MOST expensive of the graphql variants. Prefer 2a (recover
+ * text from `.loc`) or urql (demo 3, uses the lightweight graphql.web printer).
  */
-import type { DocumentNode } from "graphql";
+import { print, type DocumentNode } from "graphql";
 
 export const GRAPHQL_ENDPOINT = "http://localhost:8000/graphql";
 
@@ -40,9 +40,9 @@ export async function graphqlFetch<TResult, TVariables>(
   variables: TVariables,
   endpoint: string = GRAPHQL_ENDPOINT,
 ): Promise<TResult> {
-  // Recover the query text from the AST's attached source, so we don't pull
-  // graphql's `print()` into the bundle (see demo 2b for the print() variant).
-  const query = document.document.loc?.source.body ?? "";
+  // Serialise the AST back to text with graphql's print() (pulls the printer
+  // into the bundle — this is what makes 2b the heaviest graphql variant).
+  const query = print(document.document);
   const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
