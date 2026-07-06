@@ -163,7 +163,7 @@ test("the document const is bound to TypedDocument<Result, Variables>", () => {
   assert.equal(
     documentConst(out, "Q"),
     `export const Q = {
-  query: "query Q($id: String!) {\\n  thing {\\n    id\\n  }\\n}",
+  document: parse("query Q($id: String!) {\\n  thing {\\n    id\\n  }\\n}"),
 } as TypedDocument<QResult, QVariables>;`,
   );
 });
@@ -182,10 +182,11 @@ test("operation names are PascalCased for the emitted identifiers", () => {
   assert.ok(out.includes("export const StocktakeLines = {"));
 });
 
-test("the file imports the TypedDocument type", () => {
+test("the file imports parse (for the AST) and the TypedDocument type", () => {
   const schema = `type Query { ping: Boolean! }`;
   const out = generate({ schema, document: "query Q { ping }" });
 
+  assert.ok(out.includes(`import { parse } from "graphql";`));
   assert.ok(out.includes(`import type { TypedDocument } from "./graphql";`));
 });
 

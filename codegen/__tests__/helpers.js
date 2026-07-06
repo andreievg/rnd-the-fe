@@ -65,13 +65,13 @@ function fragmentType(generated, name) {
 
 /**
  * Pull out the query string from the emitted
- *   `export const <Name> = { query: "..." } as TypedDocument<...>;`
+ *   `export const <Name> = { document: parse("...") } as TypedDocument<...>;`
  * and return it decoded (i.e. what the query actually looks like).
  */
 function documentString(generated, name) {
   const re = name
-    ? new RegExp(`export const ${name} = \\{\\n  query: ("(?:[^"\\\\]|\\\\.)*"),`)
-    : /export const \w+ = \{\n  query: ("(?:[^"\\]|\\.)*"),/;
+    ? new RegExp(`export const ${name} = \\{\\n  document: parse\\(("(?:[^"\\\\]|\\\\.)*")\\),`)
+    : /export const \w+ = \{\n  document: parse\(("(?:[^"\\]|\\.)*")\),/;
   const m = generated.match(re);
   if (!m) throw new Error(`No document const found${name ? ` for ${name}` : ""}`);
   return JSON.parse(m[1]);
@@ -83,7 +83,7 @@ function documentString(generated, name) {
  */
 function documentConst(generated, name) {
   const re = new RegExp(
-    `export const ${name} = \\{\\n  query: "(?:[^"\\\\]|\\\\.)*",\\n\\} as TypedDocument<[^;]*>;`,
+    `export const ${name} = \\{\\n  document: parse\\("(?:[^"\\\\]|\\\\.)*"\\),\\n\\} as TypedDocument<[^;]*>;`,
   );
   const m = generated.match(re);
   if (!m) throw new Error(`No document const found for ${name}`);
