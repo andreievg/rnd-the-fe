@@ -1,13 +1,12 @@
 /**
  * The emitted document const, and the three operation kinds.
  *
- * Per operation the plugin emits a type-bound document:
+ * Per operation the plugin emits a type-bound document via urql's gql tag:
  *
- *   export const <Name> = {
- *     query: "...",
- *   } as TypedDocument<<Name>Result, <Name>Variables>;
+ *   export const <Name> = gql("...") as unknown as
+ *     TypedDocumentNode<<Name>Result, <Name>Variables>;
  *
- * The `query` string is the runtime text sent to the server — the plugin
+ * The string passed to gql() is the runtime operation text — the plugin
  * re-prints the operation and inlines every fragment it actually uses (and only
  * those). It handles query / mutation / subscription, and emits one set of
  * types per named operation in a document. (<Name> is the operation name
@@ -147,7 +146,7 @@ test("multiple operations in one document each get their own types", () => {
       );
     }
     assert.ok(
-      out.includes(`export const ${name} = {`),
+      out.includes(`export const ${name} = gql(`),
       `expected the ${name} document const to be emitted`,
     );
   }
@@ -162,9 +161,7 @@ test("the document const is bound to TypedDocument<Result, Variables>", () => {
 
   assert.equal(
     documentConst(out, "Q"),
-    `export const Q = {
-  query: "query Q($id: String!) {\\n  thing {\\n    id\\n  }\\n}",
-} as TypedDocument<QResult, QVariables>;`,
+    `export const Q = gql("query Q($id: String!) {\\n  thing {\\n    id\\n  }\\n}") as unknown as TypedDocumentNode<QResult, QVariables>;`,
   );
 });
 
@@ -179,14 +176,15 @@ test("operation names are PascalCased for the emitted identifiers", () => {
 
   assert.ok(out.includes("export type StocktakeLinesVariables ="));
   assert.ok(out.includes("export type StocktakeLinesResult ="));
-  assert.ok(out.includes("export const StocktakeLines = {"));
+  assert.ok(out.includes("export const StocktakeLines = gql("));
 });
 
-test("the file imports the TypedDocument type", () => {
+test("the file imports gql and the TypedDocumentNode type from @urql/core", () => {
   const schema = `type Query { ping: Boolean! }`;
   const out = generate({ schema, document: "query Q { ping }" });
 
-  assert.ok(out.includes(`import type { TypedDocument } from "./graphql";`));
+  assert.ok(out.includes(`import { gql } from "@urql/core";`));
+  assert.ok(out.includes(`import type { TypedDocumentNode } from "@urql/core";`));
 });
 
 test("the generated file starts with the do-not-edit header", () => {

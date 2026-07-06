@@ -73,11 +73,11 @@ test("plugin runs through @graphql-codegen/core and emits the same types", async
 });
 };`),
   );
-  assert.ok(out.includes("export const Q = {"));
-  assert.ok(out.includes("as TypedDocument<QResult, QVariables>;"));
+  assert.ok(out.includes("export const Q = gql("));
+  assert.ok(out.includes("as unknown as TypedDocumentNode<QResult, QVariables>;"));
 });
 
-test("the generated output starts with the header and TypedDocument import", async () => {
+test("the generated output starts with the header and urql imports", async () => {
   // Sanity: codegen-core succeeded and produced the do-not-edit header. This is
   // the same content run.js would write to disk.
   const out = await runThroughCore({
@@ -87,6 +87,6 @@ test("the generated output starts with the header and TypedDocument import", asy
   });
 
   assert.ok(out.startsWith("/* eslint-disable */"));
-  assert.ok(out.includes(`import type { TypedDocument } from "./graphql";`));
-  assert.ok(out.includes("export const Q = {"));
+  assert.ok(out.includes(`import { gql } from "@urql/core";`));
+  assert.ok(out.includes("export const Q = gql("));
 });

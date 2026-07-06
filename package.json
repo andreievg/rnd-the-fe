@@ -14,7 +14,9 @@
     "test": "node --test \"codegen/__tests__/*.test.js\""
   },
   "dependencies": {
-    "solid-js": "^1.9.3"
+    "@urql/core": "^6.0.0",
+    "solid-js": "^1.9.3",
+    "wonka": "^6.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",

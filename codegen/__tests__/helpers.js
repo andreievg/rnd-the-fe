@@ -65,25 +65,25 @@ function fragmentType(generated, name) {
 
 /**
  * Pull out the query string from the emitted
- *   `export const <Name> = { query: "..." } as TypedDocument<...>;`
+ *   `export const <Name> = gql("...") as unknown as TypedDocumentNode<...>;`
  * and return it decoded (i.e. what the query actually looks like).
  */
 function documentString(generated, name) {
   const re = name
-    ? new RegExp(`export const ${name} = \\{\\n  query: ("(?:[^"\\\\]|\\\\.)*"),`)
-    : /export const \w+ = \{\n  query: ("(?:[^"\\]|\\.)*"),/;
+    ? new RegExp(`export const ${name} = gql\\(("(?:[^"\\\\]|\\\\.)*")\\)`)
+    : /export const \w+ = gql\(("(?:[^"\\]|\\.)*")\)/;
   const m = generated.match(re);
   if (!m) throw new Error(`No document const found${name ? ` for ${name}` : ""}`);
   return JSON.parse(m[1]);
 }
 
 /**
- * The full `export const <Name> = {...} as TypedDocument<...>;` statement, so a
- * test can assert on the TypedDocument binding itself (not just the query text).
+ * The full `export const <Name> = gql(...) as ... TypedDocumentNode<...>;`
+ * statement, so a test can assert on the binding itself (not just the text).
  */
 function documentConst(generated, name) {
   const re = new RegExp(
-    `export const ${name} = \\{\\n  query: "(?:[^"\\\\]|\\\\.)*",\\n\\} as TypedDocument<[^;]*>;`,
+    `export const ${name} = gql\\("(?:[^"\\\\]|\\\\.)*"\\) as unknown as TypedDocumentNode<[^;]*>;`,
   );
   const m = generated.match(re);
   if (!m) throw new Error(`No document const found for ${name}`);
